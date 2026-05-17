@@ -623,6 +623,63 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Competitor comparison */}
+      <section className="border-t border-emerald-900/30 px-4 py-12">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="text-[10px] font-mono text-emerald-700 tracking-widest mb-2">// HOW WE COMPARE</div>
+            <h2 className="text-xl font-black font-mono text-emerald-400">WealthPilot vs alternatives</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:'monospace', fontSize:12 }}>
+              <thead>
+                <tr style={{ borderBottom:'1px solid rgba(16,185,129,0.2)' }}>
+                  {['Feature','WealthPilot','Robinhood','Yahoo Finance','Personal Capital'].map((h,i) => (
+                    <th key={h} style={{ padding:'10px 12px', textAlign:i===0?'left':'center', color: i===1 ? '#10b981' : 'rgba(255,255,255,0.3)', fontWeight:700, fontSize:11, letterSpacing:'0.05em' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['AI portfolio analysis','✅ Claude AI','❌','❌','⚠️ Basic'],
+                  ['Real-time prices','✅ Free','✅ Free','✅ Free','✅ Free'],
+                  ['Price alerts','✅ Free','✅ Free','✅ Free','✅ Pro only'],
+                  ['No account required','✅','❌ Requires login','✅','❌'],
+                  ['Multi-ticker P&L','✅ Free','✅','✅','✅ Pro only'],
+                  ['Rebalancing advice','✅ AI-powered','❌','❌','⚠️ Manual'],
+                  ['Cost','Free / $12 mo','Free','Free','Free / $40 mo'],
+                ].map(row => (
+                  <tr key={row[0]} style={{ borderBottom:'1px solid rgba(16,185,129,0.08)' }}>
+                    {row.map((cell,i) => (
+                      <td key={i} style={{ padding:'9px 12px', textAlign:i===0?'left':'center',
+                        color: i===1 ? '#10b981' : i===0 ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.25)',
+                        background: i===1 ? 'rgba(16,185,129,0.04)' : 'transparent', fontSize:11 }}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ borderTop:'1px solid rgba(16,185,129,0.15)', padding:'24px 24px', background:'rgba(3,7,18,0.9)', marginTop:8 }}>
+        <div style={{ maxWidth:900, margin:'0 auto', display:'flex', flexWrap:'wrap', justifyContent:'space-between', alignItems:'center', gap:16 }}>
+          <div>
+            <span style={{ fontFamily:'monospace', fontWeight:900, fontSize:15, color:'#10b981', letterSpacing:'0.1em' }}>WealthPilot</span>
+            <p style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4, fontFamily:'monospace' }}>AI-powered portfolio tracker. No account needed.</p>
+          </div>
+          <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
+            {[['About','/about'],['Privacy','/privacy'],['Terms','/terms'],['Cookie Policy','/cookies']].map(([label,href]) => (
+              <a key={label} href={href} style={{ fontSize:11, color:'rgba(255,255,255,0.25)', textDecoration:'none', fontFamily:'monospace' }}
+                onMouseOver={e=>(e.currentTarget.style.color='#10b981')} onMouseOut={e=>(e.currentTarget.style.color='rgba(255,255,255,0.25)')}>{label}</a>
+            ))}
+          </div>
+          <p style={{ fontSize:10, color:'rgba(255,255,255,0.15)', fontFamily:'monospace' }}>© 2026 WealthPilot</p>
+        </div>
+      </footer>
     </main>
 
     {showGate && (
@@ -638,6 +695,39 @@ export default function Home() {
       />
     )}
     <GuidedTour steps={WEALTHPILOT_TOUR} storageKey="wealthpilot_tour_v1" accentColor="#10b981" />
+    <WealthPilotCookieBanner />
   </>
+  )
+}
+
+function WealthPilotCookieBanner() {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    if (!localStorage.getItem('wp_cookies_ok')) setVisible(true)
+  }, [])
+  if (!visible) return null
+  return (
+    <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:200, padding:'12px 24px',
+      background:'rgba(3,7,18,0.97)', borderTop:'1px solid rgba(16,185,129,0.2)',
+      backdropFilter:'blur(16px)', display:'flex', alignItems:'center', justifyContent:'space-between',
+      gap:16, flexWrap:'wrap' }}>
+      <p style={{ fontSize:12, color:'rgba(255,255,255,0.45)', maxWidth:600, lineHeight:1.5 }}>
+        WealthPilot uses essential cookies to save your portfolio and alert preferences locally. No tracking, no ads.{' '}
+        <a href="/privacy" style={{ color:'#10b981', textDecoration:'underline', cursor:'pointer' }}>Privacy policy</a>
+      </p>
+      <div style={{ display:'flex', gap:10 }}>
+        <button onClick={() => { localStorage.setItem('wp_cookies_ok','1'); setVisible(false) }}
+          style={{ fontSize:12, fontWeight:700, padding:'7px 20px', borderRadius:8,
+            background:'linear-gradient(135deg,#10b981,#059669)', color:'#fff', border:'none', cursor:'pointer' }}>
+          Accept
+        </button>
+        <button onClick={() => setVisible(false)}
+          style={{ fontSize:12, fontWeight:500, padding:'7px 14px', borderRadius:8,
+            background:'transparent', color:'rgba(255,255,255,0.3)',
+            border:'1px solid rgba(255,255,255,0.1)', cursor:'pointer' }}>
+          Decline
+        </button>
+      </div>
+    </div>
   )
 }
