@@ -66,6 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           .number-green { color: #34d399; font-family: 'JetBrains Mono', monospace; }
           .number-red   { color: #f87171; font-family: 'JetBrains Mono', monospace; }
         `}} />
+              <Script async src="http://31.97.56.148:3100/script.js" data-website-id="af91acc6-b818-431b-a010-c8f9d6c668e5" strategy="afterInteractive" />
       </head>
       <body className="flex flex-col min-h-screen">
         <AnimatedBackground />
