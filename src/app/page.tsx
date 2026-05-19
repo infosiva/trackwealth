@@ -5,6 +5,7 @@ import RegisterGate from '@/lib/shared/RegisterGate'
 import { PortfolioChart, MetricCard } from '@/components/tremor'
 import type { PortfolioDataPoint } from '@/components/tremor'
 import GuidedTour, { type TourStep } from '@/components/GuidedTour'
+import { siteConfig } from '@/site.config'
 
 const WEALTHPILOT_TOUR: TourStep[] = [
   { target: '#portfolio-form', title: 'Track your portfolio', icon: '📊', body: 'Add your holdings — live prices from Yahoo Finance show your real-time P&L instantly.', placement: 'bottom' },
@@ -86,6 +87,17 @@ export default function Home() {
     const tick = () => setTime(new Date().toLocaleTimeString('en-US', { hour12: false }))
     tick()
     const id = setInterval(tick, 1000)
+    // VPS stats — fire and forget
+    fetch('http://31.97.56.148:3099/api/stats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        site: 'trackwealth.app',
+        path: window.location.pathname,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {/* ignore */})
     return () => clearInterval(id)
   }, [])
 
@@ -267,6 +279,26 @@ export default function Home() {
           </span>
         </div>
       </div>
+
+      {/* ── Stats Bar ── */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 py-6" style={{ animation: 'fadeSlideUp 0.6s 0.2s ease-out both' }}>
+        <div className="flex flex-wrap items-center justify-center gap-8 py-5 border-y border-emerald-900/30">
+          <div className="text-center">
+            <div className="text-3xl font-black font-mono text-emerald-400">{siteConfig.stats.portfolios}</div>
+            <div className="text-xs text-emerald-800 font-mono mt-1">PORTFOLIOS TRACKED</div>
+          </div>
+          <div className="w-px h-10 bg-emerald-900/40 hidden sm:block" />
+          <div className="text-center">
+            <div className="text-3xl font-black font-mono text-emerald-400">{siteConfig.stats.assetsTracked}</div>
+            <div className="text-xs text-emerald-800 font-mono mt-1">ASSETS TRACKED</div>
+          </div>
+          <div className="w-px h-10 bg-emerald-900/40 hidden sm:block" />
+          <div className="text-center">
+            <div className="text-3xl font-black font-mono text-emerald-400">{siteConfig.stats.avgReturn}</div>
+            <div className="text-xs text-emerald-800 font-mono mt-1">AVG USER RETURN</div>
+          </div>
+        </div>
+      </section>
 
       {/* Tremor metrics + portfolio chart */}
       <div className="max-w-7xl mx-auto px-4 pt-6">

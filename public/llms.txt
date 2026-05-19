@@ -1,0 +1,22 @@
+# TrackWealth
+> AI investment portfolio tracker with real-time insights, smart alerts, and performance analytics.
+
+## What this site does
+TrackWealth lets you add your investment holdings — stocks, ETFs, crypto, funds — and get AI-powered analysis, real-time price updates, and smart alerts when your portfolio needs attention. The AI explains market movements in plain English and suggests portfolio rebalancing opportunities.
+
+## Who it's for
+Retail investors, self-directed traders, and anyone tracking their investments. Works for beginners who want guidance and experienced investors who want AI-powered analysis without paying for a financial advisor.
+
+## Key features
+- Track stocks, ETFs, crypto, and funds in one place
+- Real-time price quotes and portfolio valuation
+- AI portfolio analysis and plain-English insights
+- Smart alerts for price movements and rebalancing signals
+- Historical performance charts and analytics
+- Export portfolio reports as PDF
+
+## Pricing
+Free tier available — track up to 10 holdings. Pro plan from $6.99/month for unlimited holdings and advanced AI analysis.
+
+## Contact
+https://trackwealth.app

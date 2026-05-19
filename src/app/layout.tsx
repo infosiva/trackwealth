@@ -7,37 +7,79 @@ import DesignEffects from '@/components/DesignEffects'
 import AnimatedBackground from '@/components/AnimatedBackground'
 import ChatBot from '@/components/ChatBot'
 import type { BrandConfig } from '@/components/SharedNavbar'
-import CookieConsent from "../../components/CookieConsent";
+import CookieConsent from "../../components/CookieConsent"
+import StickyFooterCTA from "../../components/StickyFooterCTA"
+import { siteConfig } from '@/site.config'
 
 const brand: BrandConfig = {
-  name: 'TrackWealth',
-  tagline: 'AI-powered investment portfolio tracker with real-time insights and alerts.',
-  icon: '📈',
-  color: '#22c55e',
-  url: 'https://trackwealth.app',
-  navLinks: [{ label: 'Track portfolio', href: '/' }, { label: 'Alerts', href: '/?tab=alerts' }],
-  cta: { label: 'Track free →', href: '/' },
+  name: siteConfig.name,
+  tagline: siteConfig.description,
+  icon: siteConfig.icon,
+  color: siteConfig.accentColor,
+  url: siteConfig.url,
+  navLinks: [
+    { label: 'Home', href: '/' },
+    { label: 'Portfolio', href: '/#portfolio-form' },
+    { label: 'Alerts', href: '/#portfolio-form' },
+    { label: 'Pricing', href: '/#pricing' },
+    { label: 'About', href: '/about' },
+  ],
+  cta: { label: 'Track free →', href: '/#portfolio-form' },
 }
 
 export const metadata: Metadata = {
-  title: 'TrackWealth — AI Investment Portfolio Tracker',
-  description: 'Track and optimise your investment portfolio with AI-powered insights, real-time quotes and smart alerts.',
-  keywords: ['investment tracker', 'portfolio tracker', 'AI finance', 'stock portfolio', 'wealth management'],
-  openGraph: { title: 'TrackWealth — AI Portfolio Tracker', description: 'AI investment portfolio tracker with smart alerts.', type: 'website', locale: 'en_GB', siteName: 'TrackWealth' },
-  twitter: { card: 'summary_large_image', title: 'TrackWealth', description: 'AI investment portfolio tracker.' },
-  robots: { index: true, follow: true },
+  title: siteConfig.seo.title,
+  description: siteConfig.seo.description,
+  keywords: ['investment tracker', 'portfolio tracker', 'AI finance', 'stock portfolio', 'wealth management', 'crypto tracker'],
+  openGraph: {
+    title: siteConfig.seo.title,
+    description: siteConfig.seo.description,
+    type: 'website',
+    locale: 'en_US',
+    siteName: siteConfig.name,
+    url: siteConfig.url,
+    images: [{ url: `${siteConfig.url}/og.png`, width: 1200, height: 630, alt: `${siteConfig.name} — AI Investment Tracker` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: siteConfig.seo.title,
+    description: siteConfig.seo.description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  alternates: { canonical: siteConfig.url },
+}
+
+const webAppJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": siteConfig.name,
+  "url": siteConfig.url,
+  "description": siteConfig.description,
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "Web",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+}
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "What is TrackWealth?", "acceptedAnswer": { "@type": "Answer", "text": "TrackWealth is an AI-powered investment portfolio tracker. Enter your stocks, crypto, or mutual fund holdings to get live P&L, AI risk analysis, and price alerts — no brokerage login required." } },
+    { "@type": "Question", "name": "Is TrackWealth free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. TrackWealth is free with 3 portfolio analyses per day. Pro plan ($12/mo) gives unlimited analyses, email alerts, and CSV export." } },
+    { "@type": "Question", "name": "Does TrackWealth require a brokerage account?", "acceptedAnswer": { "@type": "Answer", "text": "No. You manually enter your tickers and share counts. TrackWealth fetches live prices from Yahoo Finance — no brokerage connection needed." } },
+  ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-          "@context": "https://schema.org", "@type": "SoftwareApplication",
-          "name": "TrackWealth", "url": brand.url, "description": brand.tagline,
-          "applicationCategory": "FinanceApplication", "operatingSystem": "Web",
-          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" }
-        })}} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -65,15 +107,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           /* Terminal-style number formatting */
           .number-green { color: #34d399; font-family: 'JetBrains Mono', monospace; }
           .number-red   { color: #f87171; font-family: 'JetBrains Mono', monospace; }
+          @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         `}} />
-              <Script async src="http://31.97.56.148:3100/script.js" data-website-id="af91acc6-b818-431b-a010-c8f9d6c668e5" strategy="afterInteractive" />
+        <Script async src="http://31.97.56.148:3100/script.js" data-website-id="af91acc6-b818-431b-a010-c8f9d6c668e5" strategy="afterInteractive" />
       </head>
       <body className="flex flex-col min-h-screen">
         <AnimatedBackground />
         <DesignEffects />
         <SharedNavbar brand={brand} />
         <main className="flex-1 pt-16">{children}</main>
-        <Footer siteName="TrackWealth" />
+        <Footer siteName={siteConfig.name} />
         <ChatBot />
         <Script
           async
@@ -81,7 +125,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-      <CookieConsent />
+        <CookieConsent />
+        <StickyFooterCTA />
         {/* eslint-disable-next-line @next/next/no-before-interactive-script-outside-document */}
         <script src="http://31.97.56.148:3098/t.js" data-site="trackwealth.app" defer></script>
       </body>

@@ -2,22 +2,29 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 
-const ACCENT = '#10b981'
+const ACCENT = '#22c55e'
 const BOT_NAME = 'WealthBot'
-const WELCOME = '📈 Hi! I\'m WealthBot — your AI investing assistant. Ask me about portfolio performance, stock analysis, market trends, or how to use the tracker.'
-const SYSTEM_PROMPT = `You are WealthBot, the AI assistant for WealthPilot — an AI-powered portfolio tracker.
+const WELCOME = "Hi! I can analyze your portfolio or answer investment questions. What would you like to know?"
+const SYSTEM_PROMPT = `You are WealthBot, the AI assistant for TrackWealth — an AI-powered portfolio tracker.
 Help users understand their portfolio performance, explain investment concepts, give market context, and help them use the tracker.
 Be clear, data-driven, and concise. Always clarify you're providing information, not financial advice.`
 
 interface Message { role: 'user' | 'assistant'; content: string }
 
 export default function ChatBot() {
+  const [shown, setShown] = useState(false)
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: WELCOME }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // 30s delay before showing chatbot button
+  useEffect(() => {
+    const t = setTimeout(() => setShown(true), 30000)
+    return () => clearTimeout(t)
+  }, [])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 100) }, [open])
@@ -54,16 +61,18 @@ export default function ChatBot() {
 
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
 
+  if (!shown) return null
+
   return (
     <>
       <button onClick={() => setOpen(o => !o)} aria-label="WealthBot"
-        style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, width: 52, height: 52, borderRadius: 12, background: ACCENT, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px ${ACCENT}55`, transition: 'transform 0.2s' }}
+        style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, width: 52, height: 52, borderRadius: 12, background: `linear-gradient(135deg, ${ACCENT}, #059669)`, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px ${ACCENT}55`, transition: 'transform 0.2s' }}
         onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
         onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
         {open ? (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         ) : (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         )}
       </button>
 
