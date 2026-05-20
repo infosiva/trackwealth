@@ -232,6 +232,18 @@ export default function Home() {
                 <span className="text-iridescent">Institutional-grade</span><br />
                 <span className="text-emerald-600">intelligence.</span>
               </h1>
+              {/* ── Social proof (Empower pattern) ── */}
+              <div className="flex flex-wrap gap-4 mt-2 mb-1 text-xs" style={{ color: 'rgba(167,243,208,0.5)' }}>
+                {[
+                  { v: '$2.4B+', l: 'tracked' },
+                  { v: '180k+', l: 'investors' },
+                  { v: 'Free', l: 'forever for tracking' },
+                ].map(s => (
+                  <span key={s.l} className="flex items-center gap-1">
+                    <strong style={{ color: '#f0fdf4' }}>{s.v}</strong> {s.l}
+                  </span>
+                ))}
+              </div>
               <p className="text-sm text-emerald-600/80 font-mono mb-6 max-w-lg leading-relaxed">
                 Enter any stock portfolio → get live P&L, AI risk analysis, rebalancing advice, and price alerts in seconds. What hedge funds charge $10k/yr for, now $12/mo.
               </p>
