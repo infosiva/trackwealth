@@ -52,7 +52,7 @@ function AllocationBar({ holdings, total }: { holdings: Result[]; total: number 
 }
 
 export default function Home() {
-  const { count: gateCount, showGate, increment: gateIncrement, onRegistered, dismissGate, isRegistered } = useGate('wealthpilot', 3)
+  const { count: gateCount, showGate, increment: gateIncrement, onRegistered, dismissGate, isRegistered } = useGate('wealthpilot', 5)
   const remaining = Math.max(0, 3 - gateCount)
   const [isPro, setIsPro] = useState(false)
   const isLimited = !isRegistered && !isPro && gateCount >= 3
@@ -235,9 +235,9 @@ export default function Home() {
               {/* ── Social proof (Empower pattern) ── */}
               <div className="flex flex-wrap gap-4 mt-2 mb-1 text-xs" style={{ color: 'rgba(167,243,208,0.5)' }}>
                 {[
-                  { v: '$2.4B+', l: 'tracked' },
-                  { v: '180k+', l: 'investors' },
-                  { v: 'Free', l: 'forever for tracking' },
+                  { v: 'Real-time', l: 'market data' },
+                  { v: 'AI-powered', l: 'insights' },
+                  { v: 'Free', l: 'to start' },
                 ].map(s => (
                   <span key={s.l} className="flex items-center gap-1">
                     <strong style={{ color: '#f0fdf4' }}>{s.v}</strong> {s.l}
@@ -729,7 +729,7 @@ export default function Home() {
     {showGate && (
       <RegisterGate
         freeUsed={gateCount}
-        freeLimit={3}
+        freeLimit={5}
         freeFeature="analyses"
         lockedFeature="unlimited portfolio analyses"
         accentColor="#10b981"

@@ -8,7 +8,7 @@ export const siteConfig = {
   accentColor: "#22c55e",
   secondaryColor: "#34d399",
   icon: "📈",
-  stats: { portfolios: "5,400+", assetsTracked: "250,000+", avgReturn: "+14.2%" },
+  stats: { portfolios: "Join early users", assetsTracked: "Real-time tracking", avgReturn: "AI-powered insights" },
   chatbot: {
     openingMessage: "Hi! I can analyze your portfolio or answer investment questions. What would you like to know?",
     apiEndpoint: "/api/chat",

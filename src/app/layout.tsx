@@ -31,6 +31,7 @@ export const metadata: Metadata = {
   title: siteConfig.seo.title,
   description: siteConfig.seo.description,
   keywords: ['investment tracker', 'portfolio tracker', 'AI finance', 'stock portfolio', 'wealth management', 'crypto tracker'],
+  metadataBase: new URL(siteConfig.url),
   openGraph: {
     title: siteConfig.seo.title,
     description: siteConfig.seo.description,
