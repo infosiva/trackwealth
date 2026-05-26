@@ -379,6 +379,27 @@ body {
 /* ─────────────────────────────────────────
    Film grain / noise texture
 ───────────────────────────────────────── */
+.grain {
+  position: fixed;
+  inset: -200%;
+  width: 400%; height: 400%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  animation: grain-shift 0.5s steps(8) infinite;
+}
+@keyframes grain-shift {
+  0%   { transform: translate(0,0) }
+  12%  { transform: translate(-2%,-3%) }
+  25%  { transform: translate(3%,1%) }
+  37%  { transform: translate(-1%,3%) }
+  50%  { transform: translate(2%,-2%) }
+  62%  { transform: translate(-3%,2%) }
+  75%  { transform: translate(1%,-1%) }
+  87%  { transform: translate(-2%,3%) }
+  100% { transform: translate(0,0) }
+}
 .noise-overlay {
   position: fixed;
   inset: 0;
@@ -1651,3 +1672,10 @@ pre {
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
+
+/* ── Aurora background blobs ── */
+.aurora { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: -1; will-change: transform; }
+.aurora-primary { top: -15%; left: -10%; width: min(700px, 90vw); height: min(700px, 90vw); background: radial-gradient(circle, color-mix(in srgb, var(--theme-primary, #7c3aed) 30%, transparent) 0%, transparent 70%); animation: aurora-drift 18s ease-in-out infinite alternate; }
+.aurora-secondary { top: 35%; right: -12%; width: min(550px, 80vw); height: min(550px, 80vw); background: radial-gradient(circle, color-mix(in srgb, var(--theme-secondary, #a78bfa) 20%, transparent) 0%, transparent 70%); animation: aurora-drift 24s ease-in-out infinite alternate-reverse; }
+.aurora-third { bottom: -10%; left: 35%; width: min(480px, 70vw); height: min(480px, 70vw); background: radial-gradient(circle, color-mix(in srgb, var(--theme-primary, #7c3aed) 18%, transparent) 0%, transparent 70%); animation: aurora-drift 30s ease-in-out infinite alternate; }
+@keyframes aurora-drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(30px, 20px) scale(1.08); } }
