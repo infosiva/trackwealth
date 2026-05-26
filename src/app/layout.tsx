@@ -112,7 +112,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         `}} />
-        <Script async src="http://31.97.56.148:3100/script.js" data-website-id="af91acc6-b818-431b-a010-c8f9d6c668e5" strategy="afterInteractive" />
       </head>
       <body className="flex flex-col min-h-screen">
         <AnimatedBackground />
@@ -130,8 +129,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         <CookieConsent />
         <StickyFooterCTA />
-        {/* eslint-disable-next-line @next/next/no-before-interactive-script-outside-document */}
-        <script src="http://31.97.56.148:3098/t.js" data-site="trackwealth.app" defer></script>
+        <Script defer data-domain="trackwealth.app" src="https://plausible.io/js/script.js" strategy="afterInteractive" />
       </body>
     </html>
   )
