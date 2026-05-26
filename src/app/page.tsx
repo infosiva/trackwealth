@@ -1,31 +1,164 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useGate } from '@/lib/shared/useGate'
 import RegisterGate from '@/lib/shared/RegisterGate'
-import { PortfolioChart, MetricCard } from '@/components/tremor'
-import type { PortfolioDataPoint } from '@/components/tremor'
 import GuidedTour, { type TourStep } from '@/components/GuidedTour'
 import { siteConfig } from '@/site.config'
 
-const WEALTHPILOT_TOUR: TourStep[] = [
-  { target: '#portfolio-form', title: 'Track your portfolio', icon: '📊', body: 'Add your holdings — live prices from Yahoo Finance show your real-time P&L instantly.', placement: 'bottom' },
-  { target: '#pricing', title: 'Unlock unlimited analyses', icon: '💹', body: 'Pro removes daily limits — run as many AI portfolio checks as you want.', placement: 'top' },
+// ─── Tour ────────────────────────────────────────────────────────────────────
+const TOUR: TourStep[] = [
+  { target: '#portfolio-form', title: 'Track your portfolio', icon: '📊', body: 'Add holdings — live prices show your real-time P&L instantly.', placement: 'bottom' },
+  { target: '#pricing', title: 'Unlock unlimited analyses', icon: '💹', body: 'Pro removes daily limits — run AI checks any time.', placement: 'top' },
 ]
 
+// ─── Types ───────────────────────────────────────────────────────────────────
 interface Holding { ticker: string; shares: string; buyPrice: string }
 interface Result { ticker: string; shares: number; buy_price: number; current_price: number; current_value: number; gain_loss_pct: number; error?: string }
 interface HistoryEntry { date: string; value: number; cost: number }
 interface PortfolioResult { holdings: Result[]; total_value: number; total_cost: number; total_gain_loss_pct: number; insights?: string }
 interface Alert { ticker: string; targetPrice: number; direction: 'above' | 'below'; triggered?: boolean }
 
+// ─── Colour map ──────────────────────────────────────────────────────────────
 const COLORS: Record<string, string> = {
-  AAPL:'#00ff64', MSFT:'#00d4ff', GOOGL:'#ffaa00', AMZN:'#ff6600',
-  TSLA:'#ff4444', META:'#4488ff', NVDA:'#aa44ff', NFLX:'#ff3333',
-  JPM:'#00ccff', default: '#00ff64',
+  AAPL:'#22c55e', MSFT:'#4ade80', GOOGL:'#86efac', AMZN:'#16a34a',
+  TSLA:'#f87171', META:'#6ee7b7', NVDA:'#34d399', NFLX:'#a7f3d0',
+  JPM:'#bbf7d0', default: '#22c55e',
 }
 
+// ─── Animated Net-Worth Chart ─────────────────────────────────────────────────
+function NetWorthChart() {
+  const canvasRef = useRef<SVGSVGElement>(null)
+  const [progress, setProgress] = useState(0)
+
+  const pts = [
+    { x: 0,   y: 88 },
+    { x: 60,  y: 75 },
+    { x: 120, y: 80 },
+    { x: 180, y: 62 },
+    { x: 240, y: 55 },
+    { x: 300, y: 42 },
+    { x: 360, y: 35 },
+    { x: 420, y: 28 },
+    { x: 480, y: 18 },
+    { x: 540, y: 10 },
+  ]
+
+  useEffect(() => {
+    let frame: number
+    let start: number | null = null
+    const duration = 2000
+    const animate = (ts: number) => {
+      if (!start) start = ts
+      const p = Math.min((ts - start) / duration, 1)
+      setProgress(p)
+      if (p < 1) frame = requestAnimationFrame(animate)
+    }
+    frame = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
+  const visiblePts = pts.map((p, i) => {
+    const threshold = i / (pts.length - 1)
+    if (progress < threshold) return null
+    return p
+  }).filter(Boolean) as typeof pts
+
+  const pathD = visiblePts.length > 1
+    ? visiblePts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ')
+    : ''
+
+  const areaD = visiblePts.length > 1
+    ? `${pathD} L ${visiblePts[visiblePts.length - 1].x} 100 L 0 100 Z`
+    : ''
+
+  return (
+    <svg ref={canvasRef} viewBox="0 0 540 100" className="w-full h-full" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#22c55e" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#22c55e" stopOpacity="0.02" />
+        </linearGradient>
+        <linearGradient id="chartLine" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#16a34a" />
+          <stop offset="100%" stopColor="#4ade80" />
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      {areaD && <path d={areaD} fill="url(#chartFill)" />}
+      {pathD && <path d={pathD} fill="none" stroke="url(#chartLine)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" filter="url(#glow)" />}
+      {visiblePts.length > 0 && (
+        <circle
+          cx={visiblePts[visiblePts.length - 1].x}
+          cy={visiblePts[visiblePts.length - 1].y}
+          r="4"
+          fill="#4ade80"
+          filter="url(#glow)"
+          style={{ animation: 'pulseGreen 2s ease-in-out infinite' }}
+        />
+      )}
+    </svg>
+  )
+}
+
+// ─── Health Score Meter ───────────────────────────────────────────────────────
+function HealthMeter({ score }: { score: number }) {
+  const [displayed, setDisplayed] = useState(0)
+  useEffect(() => {
+    let frame: number
+    let start: number | null = null
+    const animate = (ts: number) => {
+      if (!start) start = ts
+      const p = Math.min((ts - start) / 1200, 1)
+      setDisplayed(Math.round(p * score))
+      if (p < 1) frame = requestAnimationFrame(animate)
+    }
+    frame = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(frame)
+  }, [score])
+
+  const pct = (displayed / 100) * 100
+  const color = score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444'
+  const label = score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : 'Needs Work'
+
+  return (
+    <div className="tw-health-meter">
+      <div className="tw-meter-ring">
+        <svg viewBox="0 0 100 100" className="w-full h-full">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(34,197,94,0.1)" strokeWidth="8" />
+          <circle
+            cx="50" cy="50" r="40" fill="none"
+            stroke={color} strokeWidth="8" strokeLinecap="round"
+            strokeDasharray={`${2 * Math.PI * 40}`}
+            strokeDashoffset={`${2 * Math.PI * 40 * (1 - pct / 100)}`}
+            transform="rotate(-90 50 50)"
+            style={{ transition: 'stroke-dashoffset 0.05s linear', filter: `drop-shadow(0 0 6px ${color}80)` }}
+          />
+        </svg>
+        <div className="tw-meter-center">
+          <span className="tw-meter-score" style={{ color }}>{displayed}</span>
+          <span className="tw-meter-label">{label}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── AI Insight Card ──────────────────────────────────────────────────────────
+function InsightCard({ icon, text, highlight }: { icon: string; text: string; highlight?: boolean }) {
+  return (
+    <div className={`tw-insight-card ${highlight ? 'tw-insight-highlight' : ''}`}>
+      <span className="tw-insight-icon">{icon}</span>
+      <p className="tw-insight-text">{text}</p>
+    </div>
+  )
+}
+
+// ─── Mini Sparkline ───────────────────────────────────────────────────────────
 function MiniSparkline({ history }: { history: HistoryEntry[] }) {
-  if (history.length < 2) return <span className="text-xs opacity-30">no data</span>
+  if (history.length < 2) return <span className="text-xs opacity-30 font-mono">no data</span>
   const vals = history.map(h => h.value)
   const min = Math.min(...vals), max = Math.max(...vals)
   const range = max - min || 1
@@ -34,11 +167,12 @@ function MiniSparkline({ history }: { history: HistoryEntry[] }) {
   const up = vals[vals.length - 1] >= vals[0]
   return (
     <svg width={w} height={h}>
-      <polyline points={pts.join(' ')} fill="none" stroke={up ? '#00ff64' : '#ff4444'} strokeWidth="1.5" strokeLinejoin="round" />
+      <polyline points={pts.join(' ')} fill="none" stroke={up ? '#22c55e' : '#f87171'} strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
   )
 }
 
+// ─── Allocation Bar ───────────────────────────────────────────────────────────
 function AllocationBar({ holdings, total }: { holdings: Result[]; total: number }) {
   const valid = holdings.filter(h => !h.error && h.current_value > 0)
   return (
@@ -51,6 +185,7 @@ function AllocationBar({ holdings, total }: { holdings: Result[]; total: number 
   )
 }
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const { count: gateCount, showGate, increment: gateIncrement, onRegistered, dismissGate, isRegistered } = useGate('wealthpilot', 5)
   const remaining = Math.max(0, 3 - gateCount)
@@ -67,7 +202,7 @@ export default function Home() {
   const [alertPrice, setAlertPrice] = useState('')
   const [alertDir, setAlertDir] = useState<'above' | 'below'>('above')
   const [tab, setTab] = useState<'holdings' | 'allocation' | 'insights' | 'alerts'>('holdings')
-  const [time, setTime] = useState('')
+  const [trackMode, setTrackMode] = useState<'Investments' | 'Spending' | 'Savings' | 'Net Worth'>('Investments')
 
   useEffect(() => {
     try {
@@ -77,43 +212,29 @@ export default function Home() {
       if (savedAlerts) setAlerts(JSON.parse(savedAlerts))
       if (localStorage.getItem('wealthpilot-pro') === '1') setIsPro(true)
     } catch { /* ignore */ }
-    // Handle Stripe success redirect
     const params = new URLSearchParams(window.location.search)
     if (params.get('upgraded') === '1') {
       localStorage.setItem('wealthpilot-pro', '1')
       setIsPro(true)
       window.history.replaceState({}, '', '/')
     }
-    const tick = () => setTime(new Date().toLocaleTimeString('en-US', { hour12: false }))
-    tick()
-    const id = setInterval(tick, 1000)
-    // VPS stats — fire and forget
     fetch('http://31.97.56.148:3099/api/stats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        site: 'trackwealth.app',
-        path: window.location.pathname,
-        userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString(),
-      }),
+      body: JSON.stringify({ site: 'trackwealth.app', path: window.location.pathname, userAgent: navigator.userAgent, timestamp: new Date().toISOString() }),
     }).catch(() => {/* ignore */})
-    return () => clearInterval(id)
   }, [])
 
   const handleUpgrade = useCallback(async () => {
     setCheckoutLoading(true)
     try {
       const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: '' }),
       })
       const data = await res.json()
       if (data.url) window.location.href = data.url
-    } catch { /* ignore */ } finally {
-      setCheckoutLoading(false)
-    }
+    } catch { /* ignore */ } finally { setCheckoutLoading(false) }
   }, [])
 
   const addRow = () => setHoldings(h => [...h, { ticker: '', shares: '', buyPrice: '' }])
@@ -129,8 +250,7 @@ export default function Home() {
     setLoading(true)
     try {
       const res = await fetch('/api/portfolio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ holdings: valid.map(h => ({ ticker: h.ticker.toUpperCase(), shares: parseFloat(h.shares), buy_price: parseFloat(h.buyPrice) })), question }),
       })
       const data = await res.json()
@@ -163,186 +283,211 @@ export default function Home() {
   }
 
   const triggeredAlerts = alerts.filter(a => a.triggered)
-  const inp = 'w-full bg-[#030712] border border-emerald-900/60 rounded px-3 py-2 text-sm text-emerald-300 placeholder-emerald-900/60 focus:outline-none focus:border-emerald-500/60 transition-all font-mono uppercase'
-  const inpNum = 'w-full bg-[#030712] border border-emerald-900/60 rounded px-3 py-2 text-sm text-emerald-300 placeholder-emerald-900/60 focus:outline-none focus:border-emerald-500/60 transition-all font-mono'
+  const inp = 'tw-input-mono uppercase'
+  const inpNum = 'tw-input-mono'
 
-  const PORTFOLIO_DATA: PortfolioDataPoint[] = [
-    { date: 'Jan', value: 10000, gain: 0 },
-    { date: 'Feb', value: 10800, gain: 800 },
-    { date: 'Mar', value: 10400, gain: 400 },
-    { date: 'Apr', value: 11200, gain: 1200 },
-    { date: 'May', value: 12100, gain: 2100 },
-  ]
-  const METRICS = [
-    { title: 'Portfolio Value', value: '$12,100', delta: '+21%', deltaType: 'increase' as const },
-    { title: "Today's Gain", value: '+$340', delta: '+2.9%', deltaType: 'moderateIncrease' as const },
-    { title: 'Assets Tracked', value: '8', deltaType: 'unchanged' as const },
-  ]
+  const trackModes: Array<'Investments' | 'Spending' | 'Savings' | 'Net Worth'> = ['Investments', 'Spending', 'Savings', 'Net Worth']
 
   return (
     <>
-    {/* Finance scan-line effect */}
-    <div className="scanline" aria-hidden="true" />
-    {/* Data grid background */}
-    <div className="finance-grid" aria-hidden="true" />
-    <main className="min-h-screen bg-[#030712] relative z-10">
+      {/* Ambient background */}
+      <div className="tw-bg-orb tw-orb-1" aria-hidden="true" />
+      <div className="tw-bg-orb tw-orb-2" aria-hidden="true" />
+      <div className="tw-bg-orb tw-orb-3" aria-hidden="true" />
+      <div className="tw-grid-overlay" aria-hidden="true" />
 
-      {/* Compact sticky nav */}
-      <nav className="sticky top-0 z-50 bg-[#030712]/95 backdrop-blur border-b border-emerald-900/30 h-12 flex items-center justify-between px-6">
-        <div className="flex items-center gap-3">
-          <span className="font-mono font-black text-base tracking-widest text-white">WealthPilot</span>
-          <div className="flex items-center gap-1.5 ml-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[10px] font-mono text-emerald-400 tracking-widest">LIVE</span>
+      <main className="min-h-screen relative z-10">
+
+        {/* ── Ticker tape ──────────────────────────────────────────── */}
+        <div className="tw-ticker-wrap" aria-hidden="true">
+          <div className="tw-ticker">
+            {[
+              ['AAPL', '+1.2%', true], ['MSFT', '+0.8%', true], ['GOOGL', '-0.3%', false],
+              ['AMZN', '+2.1%', true], ['TSLA', '-1.5%', false], ['NVDA', '+3.4%', true],
+              ['META', '+0.6%', true], ['JPM', '-0.2%', false], ['NFLX', '+1.8%', true],
+              ['BTC', '+3.1%', true], ['ETH', '+2.2%', true], ['GOLD', '+0.4%', true],
+              ['AAPL', '+1.2%', true], ['MSFT', '+0.8%', true], ['GOOGL', '-0.3%', false],
+              ['AMZN', '+2.1%', true], ['TSLA', '-1.5%', false], ['NVDA', '+3.4%', true],
+            ].map(([t, v, up], i) => (
+              <span key={i} className="tw-tick-item">
+                <span className="tw-tick-symbol">{t}</span>
+                <span className={up ? 'tw-tick-up' : 'tw-tick-down'}>{v as string}</span>
+              </span>
+            ))}
           </div>
-          <span className="pill-glass text-[10px] font-mono text-emerald-300 px-2.5 py-0.5 ml-1">AI Insights</span>
         </div>
-        <div className="flex items-center gap-3">
-          {triggeredAlerts.length > 0 && (
-            <span className="text-[11px] font-mono text-amber-400 animate-pulse">⚡ {triggeredAlerts.length} ALERT{triggeredAlerts.length > 1 ? 'S' : ''}</span>
-          )}
-          {time && <span className="text-[10px] font-mono text-emerald-800 hidden sm:block">{time}</span>}
-          {isPro ? (
-            <span className="px-3 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 font-mono text-[11px] font-bold rounded tracking-widest">⚡ PRO</span>
-          ) : (
-            <button onClick={handleUpgrade} disabled={checkoutLoading}
-              className="px-3 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 font-mono text-[11px] font-bold hover:bg-emerald-900/60 transition-all rounded tracking-widest disabled:opacity-50">
-              {checkoutLoading ? '...' : 'Upgrade Pro →'}
-            </button>
-          )}
-        </div>
-      </nav>
 
-      {/* Hero */}
-      <section className="bg-[#030712] py-16 px-6 relative overflow-hidden">
-        <div className="noise-overlay" aria-hidden="true" />
-        <div className="depth-grid" aria-hidden="true" />
-        <div className="liquid-blob liquid-blob-1" style={{ background: 'radial-gradient(circle, rgba(6,78,59,0.08), transparent 70%)', top: '-80px', left: '-60px' }} aria-hidden="true" />
-        <div className="liquid-blob liquid-blob-2" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.08), transparent 70%)', animationDelay: '-8s' }} aria-hidden="true" />
+        {/* ── Hero ─────────────────────────────────────────────────── */}
+        <section className="tw-hero">
+          <div className="tw-hero-inner">
 
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-950/40 mb-5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[10px] font-mono text-emerald-400 tracking-widest">LIVE MARKET DATA · AI-POWERED · FREE TO START</span>
+            {/* Left: copy + chart */}
+            <div className="tw-hero-left">
+              <div className="tw-badge fade-up">
+                <span className="tw-badge-dot" />
+                AI-powered · Real-time · No brokerage login
               </div>
-              <h1 className="text-4xl md:text-6xl font-black font-mono tracking-tight leading-none mb-5">
-                Your portfolio.<br />
-                <span className="text-iridescent">Institutional-grade</span><br />
-                <span className="text-emerald-600">intelligence.</span>
+
+              <h1 className="tw-headline fade-up delay-75">
+                Know exactly where
+                <br />
+                <span className="tw-headline-accent">you stand financially</span>
               </h1>
-              {/* ── Social proof (Empower pattern) ── */}
-              <div className="flex flex-wrap gap-4 mt-2 mb-1 text-xs" style={{ color: 'rgba(167,243,208,0.5)' }}>
-                {[
-                  { v: 'Real-time', l: 'market data' },
-                  { v: 'AI-powered', l: 'insights' },
-                  { v: 'Free', l: 'to start' },
-                ].map(s => (
-                  <span key={s.l} className="flex items-center gap-1">
-                    <strong style={{ color: '#f0fdf4' }}>{s.v}</strong> {s.l}
+
+              <p className="tw-subhead fade-up delay-150">
+                Your personal AI financial advisor. Tracks investments, spots spending patterns, and gives you the same insights wealth managers charge $500/hr for.
+              </p>
+
+              {/* What would you like to track? */}
+              <div className="tw-track-selector fade-up delay-200">
+                <span className="tw-track-label">What would you like to track?</span>
+                <div className="tw-track-pills">
+                  {trackModes.map(m => (
+                    <button key={m} onClick={() => setTrackMode(m)}
+                      className={`tw-track-pill ${trackMode === m ? 'tw-track-pill-active' : ''}`}>
+                      {m === 'Investments' && '📈'} {m === 'Spending' && '💳'} {m === 'Savings' && '🏦'} {m === 'Net Worth' && '💰'} {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="tw-hero-cta fade-up delay-300">
+                <a href="#portfolio-form"
+                  className="tw-btn-primary btn-press">
+                  Start tracking free
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                </a>
+                {!isPro && (
+                  <button onClick={handleUpgrade} disabled={checkoutLoading}
+                    className="tw-btn-secondary btn-press">
+                    {checkoutLoading ? 'Loading...' : 'Upgrade to Pro — $12/mo'}
+                  </button>
+                )}
+              </div>
+
+              {/* Trust signals */}
+              <div className="tw-trust-row fade-up delay-400">
+                {['No credit card', 'Bank-grade security', '3 free analyses/day'].map(t => (
+                  <span key={t} className="tw-trust-item">
+                    <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    {t}
                   </span>
                 ))}
               </div>
-              <p className="text-sm text-emerald-600/80 font-mono mb-6 max-w-lg leading-relaxed">
-                Enter any stock portfolio → get live P&L, AI risk analysis, rebalancing advice, and price alerts in seconds. What hedge funds charge $10k/yr for, now $12/mo.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-950/40 border border-emerald-900/40 rounded-full">
-                  <span className="text-emerald-500 text-xs">✓</span>
-                  <span className="text-emerald-700 text-[11px] font-mono">No brokerage login needed</span>
+            </div>
+
+            {/* Right: demo dashboard card */}
+            <div className="tw-hero-right scale-in delay-200">
+              <div className="tw-demo-card">
+                {/* Card header */}
+                <div className="tw-demo-header">
+                  <div>
+                    <div className="tw-demo-label">Total Net Worth</div>
+                    <div className="tw-demo-value">$142,830</div>
+                    <div className="tw-demo-delta">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                      +$8,420 this month (+6.3%)
+                    </div>
+                  </div>
+                  <HealthMeter score={78} />
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-950/40 border border-emerald-900/40 rounded-full">
-                  <span className="text-emerald-500 text-xs">✓</span>
-                  <span className="text-emerald-700 text-[11px] font-mono">Yahoo Finance + Claude AI</span>
+
+                {/* Chart */}
+                <div className="tw-demo-chart">
+                  <NetWorthChart />
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-950/40 border border-emerald-900/40 rounded-full">
-                  <span className="text-emerald-500 text-xs">✓</span>
-                  <span className="text-emerald-700 text-[11px] font-mono">3 free analyses daily</span>
+
+                {/* AI Insight callouts */}
+                <div className="tw-insights-stack">
+                  <InsightCard icon="💡" text="You're spending 23% more on dining than last month" highlight />
+                  <InsightCard icon="📈" text="NVDA up 34% — consider taking partial profits" />
+                  <InsightCard icon="🎯" text="On track to hit $200k net worth by Q3" />
+                </div>
+
+                {/* Mini portfolio overview */}
+                <div className="tw-demo-holdings">
+                  {[
+                    { ticker: 'NVDA', value: '$42,100', change: '+34%', up: true },
+                    { ticker: 'AAPL', value: '$28,300', change: '+12%', up: true },
+                    { ticker: 'TSLA', value: '$11,200', change: '-8%', up: false },
+                  ].map(h => (
+                    <div key={h.ticker} className="tw-holding-row">
+                      <div className="tw-holding-dot" style={{ background: COLORS[h.ticker] }} />
+                      <span className="tw-holding-ticker">{h.ticker}</span>
+                      <span className="tw-holding-value">{h.value}</span>
+                      <span className={h.up ? 'tw-holding-up' : 'tw-holding-down'}>{h.change}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            {/* Live metrics */}
-            <div className="grid grid-cols-2 gap-3 min-w-[260px]">
+        {/* ── Mobile demo strip (lg:hidden) ────────────────────────── */}
+        <div className="tw-mobile-strip lg:hidden">
+          {[
+            { label: 'Net Worth', value: '$142,830', delta: '+6.3%', up: true },
+            { label: 'Monthly Gain', value: '+$8,420', delta: 'this month', up: true },
+            { label: 'Health Score', value: '78 / 100', delta: 'Excellent', up: true },
+            { label: 'AI Alerts', value: '3 active', delta: 'new insight', up: null },
+          ].map(c => (
+            <div key={c.label} className="tw-mobile-card">
+              <div className="tw-mobile-card-label">{c.label}</div>
+              <div className="tw-mobile-card-value">{c.value}</div>
+              <div className={`tw-mobile-card-delta ${c.up === null ? 'tw-delta-neutral' : c.up ? 'tw-delta-up' : 'tw-delta-down'}`}>{c.delta}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── How it works (steps) ─────────────────────────────────── */}
+        <section className="tw-steps-section">
+          <div className="tw-steps-inner">
+            <div className="tw-section-eyebrow">How it works</div>
+            <div className="tw-steps-row">
               {[
-                { label: 'S&P 500', value: '+1.24%', arrow: '↑', positive: true },
-                { label: 'NASDAQ', value: '-0.31%', arrow: '↓', positive: false },
-                { label: 'BTC', value: '+3.41%', arrow: '↑', positive: null },
-                { label: 'Gold', value: '+0.18%', arrow: '↑', positive: true },
-              ].map(m => (
-                <div key={m.label} className="glass-liquid rounded-xl p-4">
-                  <div className="text-[9px] font-mono text-emerald-800 tracking-widest mb-1">{m.label}</div>
-                  <div className={`font-mono text-xl font-bold num-glow ${m.positive === null ? 'text-amber-400' : m.positive ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {m.value} {m.arrow}
-                  </div>
+                { n: '01', title: 'Add your holdings', desc: 'Enter stock tickers, crypto, or funds. No brokerage connection needed.' },
+                { n: '02', title: 'AI fetches live prices', desc: 'Real-time data from Yahoo Finance. See P&L update instantly.' },
+                { n: '03', title: 'Get AI insights', desc: 'Spot patterns, risk concentration, and rebalancing opportunities.' },
+                { n: '04', title: 'Set smart alerts', desc: 'Price targets and AI-triggered notifications keep you ahead.' },
+              ].map(s => (
+                <div key={s.n} className="tw-step reveal stagger-1">
+                  <div className="tw-step-num">{s.n}</div>
+                  <h3 className="tw-step-title">{s.title}</h3>
+                  <p className="tw-step-desc">{s.desc}</p>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Ticker tape */}
-      <div className="border-y border-emerald-900/30 overflow-hidden bg-[#030712]/80 py-1.5">
-        <div className="whitespace-nowrap font-mono text-[11px] text-emerald-700 animate-marquee">
-          <span className="inline-block px-8">
-            AAPL <span className="text-emerald-400">+1.2%</span> &nbsp;·&nbsp; MSFT <span className="text-emerald-400">+0.8%</span> &nbsp;·&nbsp; GOOGL <span className="text-red-400">-0.3%</span> &nbsp;·&nbsp; AMZN <span className="text-emerald-400">+2.1%</span> &nbsp;·&nbsp; TSLA <span className="text-red-400">-1.5%</span> &nbsp;·&nbsp; NVDA <span className="text-emerald-400">+3.4%</span> &nbsp;·&nbsp; META <span className="text-emerald-400">+0.6%</span> &nbsp;·&nbsp; JPM <span className="text-red-400">-0.2%</span> &nbsp;·&nbsp; NFLX <span className="text-emerald-400">+1.8%</span> &nbsp;·&nbsp; AAPL <span className="text-emerald-400">+1.2%</span> &nbsp;·&nbsp; MSFT <span className="text-emerald-400">+0.8%</span> &nbsp;·&nbsp; GOOGL <span className="text-red-400">-0.3%</span> &nbsp;·&nbsp; AMZN <span className="text-emerald-400">+2.1%</span> &nbsp;·&nbsp; TSLA <span className="text-red-400">-1.5%</span> &nbsp;·&nbsp;
-          </span>
-        </div>
-      </div>
+        {/* ── Main App ─────────────────────────────────────────────── */}
+        <section id="portfolio-form" className="tw-app-section">
+          <div className="tw-app-inner">
+            <div className="tw-section-eyebrow">Portfolio tracker</div>
+            <h2 className="tw-section-title">Analyze your portfolio now</h2>
 
-      {/* ── Stats Bar ── */}
-      <section className="relative z-10 max-w-7xl mx-auto px-6 py-6" style={{ animation: 'fadeSlideUp 0.6s 0.2s ease-out both' }}>
-        <div className="flex flex-wrap items-center justify-center gap-8 py-5 border-y border-emerald-900/30">
-          <div className="text-center">
-            <div className="text-3xl font-black font-mono text-emerald-400">{siteConfig.stats.portfolios}</div>
-            <div className="text-xs text-emerald-800 font-mono mt-1">PORTFOLIOS TRACKED</div>
-          </div>
-          <div className="w-px h-10 bg-emerald-900/40 hidden sm:block" />
-          <div className="text-center">
-            <div className="text-3xl font-black font-mono text-emerald-400">{siteConfig.stats.assetsTracked}</div>
-            <div className="text-xs text-emerald-800 font-mono mt-1">ASSETS TRACKED</div>
-          </div>
-          <div className="w-px h-10 bg-emerald-900/40 hidden sm:block" />
-          <div className="text-center">
-            <div className="text-3xl font-black font-mono text-emerald-400">{siteConfig.stats.avgReturn}</div>
-            <div className="text-xs text-emerald-800 font-mono mt-1">AVG USER RETURN</div>
-          </div>
-        </div>
-      </section>
-
-      {/* Tremor metrics + portfolio chart */}
-      <div className="max-w-7xl mx-auto px-4 pt-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          {METRICS.map(m => <MetricCard key={m.title} title={m.title} value={m.value} delta={m.delta} deltaType={m.deltaType} />)}
-        </div>
-        <div className="mb-6">
-          <PortfolioChart data={PORTFOLIO_DATA} />
-        </div>
-      </div>
-
-      {/* Main app area */}
-      <div id="portfolio-form" className="max-w-7xl mx-auto px-4 pt-0 pb-16">
-        <div className="glass-liquid rounded-xl p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-
-            {/* Input panel */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Holdings input */}
-              <div className="border border-emerald-900/40 rounded-xl bg-[#030712]/80">
-                <div className="border-b border-emerald-900/30 px-4 py-2.5 flex items-center justify-between">
-                  <span className="text-[11px] font-mono text-emerald-500 uppercase tracking-wider">► HOLDINGS INPUT</span>
-                  <span className="text-[10px] text-emerald-900 font-mono">{holdings.filter(h => h.ticker).length} positions</span>
+            <div className="tw-app-grid">
+              {/* Input panel */}
+              <div className="tw-input-panel">
+                <div className="tw-panel-head">
+                  <span className="tw-panel-title">Holdings</span>
+                  <span className="tw-panel-sub">{holdings.filter(h => h.ticker).length} position{holdings.filter(h => h.ticker).length !== 1 ? 's' : ''}</span>
                 </div>
-                <div className="p-4 space-y-2">
-                  <div className="hidden xs:grid grid-cols-3 gap-2 px-1 pb-1">
-                    {['TICKER', 'SHARES', 'BUY $'].map(l => (
-                      <span key={l} className="text-[9px] text-emerald-900 uppercase tracking-widest font-mono">{l}</span>
+
+                <div className="tw-panel-body">
+                  <div className="tw-col-labels">
+                    {['Ticker', 'Shares', 'Buy $'].map(l => (
+                      <span key={l} className="tw-col-label">{l}</span>
                     ))}
                   </div>
+
                   {holdings.map((h, i) => (
-                    <div key={i} className="grid grid-cols-3 gap-1.5">
+                    <div key={i} className="tw-holding-input-row">
                       <input value={h.ticker} onChange={e => updateRow(i, 'ticker', e.target.value.toUpperCase())}
                         placeholder="AAPL" className={inp} />
                       <input value={h.shares} onChange={e => updateRow(i, 'shares', e.target.value)}
@@ -352,426 +497,382 @@ export default function Home() {
                           placeholder="150" type="number" className={inpNum + ' pr-6'} />
                         {holdings.length > 1 && (
                           <button onClick={() => removeRow(i)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-900 hover:text-red-500 transition-colors text-xs">✕</button>
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-900 hover:text-red-400 transition-colors text-xs">✕</button>
                         )}
                       </div>
                     </div>
                   ))}
-                  <button onClick={addRow}
-                    className="w-full py-1.5 border border-dashed border-emerald-900/50 text-[10px] text-emerald-800 hover:text-emerald-600 hover:border-emerald-700/50 font-mono transition-all mt-1 rounded">
-                    + ADD_POSITION()
+
+                  <button onClick={addRow} className="tw-add-row-btn">
+                    + Add position
                   </button>
                 </div>
-              </div>
 
-              {/* AI Query */}
-              <div className="glass-liquid rounded-xl p-4">
-                <div className="text-[9px] text-emerald-700 font-mono uppercase tracking-widest mb-2">► AI QUERY (OPTIONAL)</div>
-                <input value={question} onChange={e => setQuestion(e.target.value)}
-                  placeholder="Should I rebalance? Overexposed to tech?"
-                  className="w-full bg-[#030712] border border-emerald-900/50 rounded px-3 py-2 text-xs text-emerald-300 placeholder-emerald-900/60 focus:outline-none focus:border-emerald-500/60 transition-all font-mono" />
-              </div>
-
-              {/* Run button */}
-              <button onClick={isLimited ? handleUpgrade : analyze} disabled={loading}
-                className={`w-full py-3.5 border font-mono font-bold text-sm transition-all rounded-xl flex items-center justify-center gap-2 tracking-widest ${isLimited ? 'border-amber-600/40 bg-amber-950/30 text-amber-500 cursor-pointer hover:bg-amber-950/60' : 'border-emerald-500/50 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-400 hover:text-emerald-300 disabled:opacity-40'}`}>
-                {loading ? (
-                  <><span className="blink">█</span> FETCHING LIVE DATA...</>
-                ) : isLimited ? (
-                  '⚡ DAILY LIMIT REACHED — CLICK TO UPGRADE ($12/mo)'
-                ) : (
-                  <>► RUN ANALYSIS() <span className="text-emerald-800 text-[10px]">[{remaining} left today]</span></>
-                )}
-              </button>
-
-              {/* Alerts panel */}
-              <div className="border border-emerald-900/40 rounded-xl bg-[#030712]/80">
-                <div className="border-b border-emerald-900/30 px-4 py-2.5">
-                  <span className="text-[11px] font-mono text-emerald-500 uppercase tracking-wider">► PRICE ALERTS</span>
+                {/* AI Query */}
+                <div className="tw-ai-query">
+                  <label className="tw-query-label">Ask AI (optional)</label>
+                  <input value={question} onChange={e => setQuestion(e.target.value)}
+                    placeholder="Should I rebalance? Overexposed to tech?"
+                    className="tw-input-text" />
                 </div>
-                <div className="p-4 space-y-3">
-                  <div className="flex gap-2">
+
+                {/* Run */}
+                <button onClick={isLimited ? handleUpgrade : analyze} disabled={loading}
+                  className={`tw-run-btn btn-press ${isLimited ? 'tw-run-btn-upgrade' : ''}`}>
+                  {loading ? (
+                    <><span className="tw-spinner" />Analyzing portfolio...</>
+                  ) : isLimited ? (
+                    'Daily limit reached — Upgrade to Pro'
+                  ) : (
+                    <>Analyze portfolio <span className="tw-run-remaining">{remaining} free left today</span></>
+                  )}
+                </button>
+
+                {/* Alerts panel */}
+                <div className="tw-alerts-panel">
+                  <div className="tw-panel-head">
+                    <span className="tw-panel-title">Price Alerts</span>
+                    {triggeredAlerts.length > 0 && (
+                      <span className="tw-alert-badge">⚡ {triggeredAlerts.length} triggered</span>
+                    )}
+                  </div>
+                  <div className="tw-alert-form">
                     <input value={alertTicker} onChange={e => setAlertTicker(e.target.value.toUpperCase())}
-                      placeholder="AAPL" className="w-16 bg-[#030712] border border-emerald-900/60 rounded px-2 py-1.5 text-xs text-emerald-300 placeholder-emerald-900/60 focus:outline-none focus:border-emerald-500/60 font-mono uppercase" />
+                      placeholder="AAPL" className="tw-input-mono uppercase w-16 flex-shrink-0" />
                     <select value={alertDir} onChange={e => setAlertDir(e.target.value as 'above' | 'below')}
-                      className="bg-[#030712] border border-emerald-900/60 rounded px-2 py-1.5 text-xs text-emerald-600 focus:outline-none font-mono">
-                      <option value="above">↑ ABOVE</option>
-                      <option value="below">↓ BELOW</option>
+                      className="tw-select">
+                      <option value="above">↑ Above</option>
+                      <option value="below">↓ Below</option>
                     </select>
                     <input value={alertPrice} onChange={e => setAlertPrice(e.target.value)}
                       placeholder="200" type="number"
-                      className="flex-1 bg-[#030712] border border-emerald-900/60 rounded px-2 py-1.5 text-xs text-emerald-300 placeholder-emerald-900/60 focus:outline-none focus:border-emerald-500/60 font-mono" />
-                    <button onClick={addAlert}
-                      className="px-2.5 py-1.5 border border-amber-600/40 bg-amber-950/30 text-amber-500 text-xs font-mono hover:bg-amber-950/60 transition-all rounded">SET</button>
+                      className="tw-input-mono flex-1" />
+                    <button onClick={addAlert} className="tw-alert-set-btn btn-press">Set</button>
                   </div>
-                  {alerts.length > 0 ? (
-                    <div className="space-y-1">
+                  {alerts.length > 0 && (
+                    <div className="tw-alert-list">
                       {alerts.map((a, i) => (
-                        <div key={i} className={`flex items-center justify-between px-2.5 py-1.5 rounded border text-[11px] font-mono ${a.triggered ? 'border-amber-600/40 bg-amber-950/20 text-amber-400' : 'border-emerald-900/30 text-emerald-700'}`}>
-                          <span className="font-bold">{a.ticker}</span>
+                        <div key={i} className={`tw-alert-item ${a.triggered ? 'tw-alert-triggered' : ''}`}>
+                          <span className="font-semibold">{a.ticker}</span>
                           <span>{a.direction === 'above' ? '↑' : '↓'} ${a.targetPrice}</span>
-                          {a.triggered && <span className="text-amber-400">⚡ HIT</span>}
+                          {a.triggered && <span className="tw-triggered-label">⚡ Hit</span>}
                           <button onClick={() => { const n = alerts.filter((_, j) => j !== i); setAlerts(n); localStorage.setItem('wealthpilot-alerts', JSON.stringify(n)) }}
-                            className="text-emerald-900 hover:text-red-500 transition-colors">✕</button>
+                            className="ml-auto text-xs text-emerald-900 hover:text-red-400 transition-colors">✕</button>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-[10px] text-emerald-900 font-mono text-center py-1">NO ALERTS SET</p>
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* Results panel */}
-            <div className="lg:col-span-3 space-y-4">
-              {result ? (
-                <>
-                  {/* Stats row */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[
-                      { label: 'PORTFOLIO VALUE', value: `$${result.total_value.toLocaleString()}`, sub: `P&L: $${(result.total_value - result.total_cost) >= 0 ? '+' : ''}${(result.total_value - result.total_cost).toLocaleString()}`, up: true },
-                      { label: 'TOTAL INVESTED', value: `$${result.total_cost.toLocaleString()}`, sub: `${result.holdings.filter(h => !h.error).length} POSITIONS`, up: null },
-                      { label: 'RETURN', value: `${result.total_gain_loss_pct >= 0 ? '+' : ''}${result.total_gain_loss_pct.toFixed(2)}%`, sub: result.total_gain_loss_pct >= 0 ? 'PROFITABLE ▲' : 'IN LOSS ▼', up: result.total_gain_loss_pct >= 0 },
-                    ].map(s => (
-                      <div key={s.label} className="glass-liquid rounded-xl px-3 py-3">
-                        <div className="text-[9px] text-emerald-800 font-mono uppercase tracking-widest mb-1">{s.label}</div>
-                        <div className={`text-lg font-black font-mono ${s.up === null ? 'text-emerald-300' : s.up ? 'text-emerald-400' : 'text-red-400'}`}>{s.value}</div>
-                        <div className={`text-[9px] font-mono mt-0.5 ${s.up === null ? 'text-emerald-800' : s.up ? 'text-emerald-700' : 'text-red-800'}`}>{s.sub}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Allocation bar */}
-                  <div className="glass-liquid rounded-xl px-4 py-3">
-                    <div className="text-[9px] text-emerald-800 font-mono mb-2">ALLOCATION DISTRIBUTION</div>
-                    <AllocationBar holdings={result.holdings} total={result.total_value} />
-                    <div className="flex flex-wrap gap-3 mt-2">
-                      {result.holdings.filter(h => !h.error).map(h => (
-                        <div key={h.ticker} className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-sm" style={{ background: COLORS[h.ticker] ?? COLORS.default }} />
-                          <span className="text-[9px] font-mono text-emerald-700">{h.ticker} {(h.current_value / result.total_value * 100).toFixed(0)}%</span>
+              {/* Results panel */}
+              <div className="tw-results-panel">
+                {result ? (
+                  <>
+                    {/* Stats row */}
+                    <div className="tw-stats-row">
+                      {[
+                        { label: 'Portfolio Value', value: `$${result.total_value.toLocaleString()}`, sub: `P&L: ${(result.total_value - result.total_cost) >= 0 ? '+' : ''}$${(result.total_value - result.total_cost).toLocaleString()}`, up: true },
+                        { label: 'Total Invested', value: `$${result.total_cost.toLocaleString()}`, sub: `${result.holdings.filter(h => !h.error).length} positions`, up: null },
+                        { label: 'Return', value: `${result.total_gain_loss_pct >= 0 ? '+' : ''}${result.total_gain_loss_pct.toFixed(2)}%`, sub: result.total_gain_loss_pct >= 0 ? 'Profitable ▲' : 'In Loss ▼', up: result.total_gain_loss_pct >= 0 },
+                      ].map(s => (
+                        <div key={s.label} className="tw-stat-card">
+                          <div className="tw-stat-label">{s.label}</div>
+                          <div className={`tw-stat-value ${s.up === null ? 'text-emerald-300' : s.up ? 'text-emerald-400' : 'text-red-400'}`}>{s.value}</div>
+                          <div className={`tw-stat-sub ${s.up === null ? 'text-emerald-800' : s.up ? 'text-emerald-700' : 'text-red-800'}`}>{s.sub}</div>
                         </div>
                       ))}
                     </div>
-                  </div>
 
-                  {/* Tabs */}
-                  <div className="flex gap-0 border border-emerald-900/40 rounded-xl overflow-hidden font-mono text-[11px]">
-                    {[
-                      { id: 'holdings', label: '[ POSITIONS ]' },
-                      { id: 'allocation', label: '[ HISTORY ]' },
-                      { id: 'insights', label: '[ AI ANALYSIS ]' },
-                      { id: 'alerts', label: `[ ALERTS${triggeredAlerts.length > 0 ? ` ⚡${triggeredAlerts.length}` : ''} ]` },
-                    ].map(t => (
-                      <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
-                        className={`flex-1 py-2 transition-all border-r border-emerald-900/40 last:border-0 tracking-wider ${tab === t.id ? 'bg-emerald-950/60 text-emerald-400' : 'text-emerald-800 hover:text-emerald-600 hover:bg-emerald-950/20'}`}>
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Holdings table */}
-                  {tab === 'holdings' && (
-                    <div className="border border-emerald-900/40 rounded-xl overflow-hidden bg-[#030712]/60">
-                      <div className="grid grid-cols-12 px-4 py-2 border-b border-emerald-900/30 text-[9px] text-emerald-800 font-mono uppercase tracking-widest">
-                        <span className="col-span-3">TICKER</span>
-                        <span className="col-span-2 text-right">CUR PRICE</span>
-                        <span className="col-span-2 text-right">VALUE</span>
-                        <span className="col-span-2 text-right">RETURN</span>
-                        <span className="col-span-3 text-right">ALLOC</span>
+                    {/* Allocation bar */}
+                    <div className="tw-alloc-panel">
+                      <div className="tw-alloc-label">Allocation</div>
+                      <AllocationBar holdings={result.holdings} total={result.total_value} />
+                      <div className="tw-alloc-legend">
+                        {result.holdings.filter(h => !h.error).map(h => (
+                          <div key={h.ticker} className="tw-legend-item">
+                            <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: COLORS[h.ticker] ?? COLORS.default }} />
+                            <span>{h.ticker} {(h.current_value / result.total_value * 100).toFixed(0)}%</span>
+                          </div>
+                        ))}
                       </div>
-                      {result.holdings.filter(h => !h.error).map(h => {
-                        const alloc = (h.current_value / result.total_value * 100).toFixed(1)
-                        const color = COLORS[h.ticker] ?? COLORS.default
-                        return (
-                          <div key={h.ticker} className="border-b border-emerald-900/20 last:border-0 hover:bg-emerald-950/10 transition-colors">
-                            <div className="grid grid-cols-12 px-4 py-3 items-center">
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="tw-tabs">
+                      {[
+                        { id: 'holdings', label: 'Positions' },
+                        { id: 'allocation', label: 'History' },
+                        { id: 'insights', label: 'AI Analysis' },
+                        { id: 'alerts', label: `Alerts${triggeredAlerts.length > 0 ? ` ⚡${triggeredAlerts.length}` : ''}` },
+                      ].map(t => (
+                        <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
+                          className={`tw-tab ${tab === t.id ? 'tw-tab-active' : ''}`}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Positions */}
+                    {tab === 'holdings' && (
+                      <div className="tw-positions-table">
+                        <div className="tw-positions-header">
+                          <span className="col-span-3">Ticker</span>
+                          <span className="col-span-2 text-right">Price</span>
+                          <span className="col-span-2 text-right">Value</span>
+                          <span className="col-span-2 text-right">Return</span>
+                          <span className="col-span-3 text-right">Alloc</span>
+                        </div>
+                        {result.holdings.filter(h => !h.error).map(h => {
+                          const alloc = (h.current_value / result.total_value * 100).toFixed(1)
+                          const color = COLORS[h.ticker] ?? COLORS.default
+                          return (
+                            <div key={h.ticker} className="tw-position-row">
                               <div className="col-span-3 flex items-center gap-2">
-                                <div className="w-1 h-6 rounded-full" style={{ background: color }} />
-                                <span className="font-mono font-bold text-sm" style={{ color }}>{h.ticker}</span>
+                                <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: color }} />
+                                <span className="font-semibold text-sm" style={{ color }}>{h.ticker}</span>
                               </div>
-                              <span className="col-span-2 text-right text-xs font-mono text-emerald-500">${h.current_price.toFixed(2)}</span>
-                              <span className="col-span-2 text-right text-xs font-mono text-white">${h.current_value.toLocaleString()}</span>
-                              <span className={`col-span-2 text-right text-xs font-mono font-bold ${h.gain_loss_pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              <span className="col-span-2 text-right text-xs text-emerald-400">${h.current_price.toFixed(2)}</span>
+                              <span className="col-span-2 text-right text-xs text-white">${h.current_value.toLocaleString()}</span>
+                              <span className={`col-span-2 text-right text-xs font-semibold ${h.gain_loss_pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {h.gain_loss_pct >= 0 ? '+' : ''}{h.gain_loss_pct.toFixed(2)}%
                               </span>
                               <div className="col-span-3 flex items-center justify-end gap-2">
-                                <div className="flex-1 h-1 bg-emerald-950 rounded overflow-hidden max-w-12">
+                                <div className="flex-1 h-1 bg-emerald-950/60 rounded overflow-hidden max-w-12">
                                   <div className="h-full rounded transition-all" style={{ width: `${alloc}%`, background: color }} />
                                 </div>
-                                <span className="text-[10px] font-mono text-emerald-800">{alloc}%</span>
+                                <span className="text-[10px] text-emerald-800">{alloc}%</span>
                               </div>
                             </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* History tab */}
-                  {tab === 'allocation' && (
-                    <div className="glass-liquid rounded-xl p-4">
-                      <div className="text-[9px] text-emerald-800 font-mono mb-3">PORTFOLIO VALUE HISTORY (30 DAY)</div>
-                      {history.length >= 2 ? (
-                        <>
-                          <MiniSparkline history={history} />
-                          <div className="mt-3 space-y-1">
-                            {history.slice(-5).reverse().map((h, i) => (
-                              <div key={i} className="flex justify-between text-[10px] font-mono border-b border-emerald-900/20 pb-1">
-                                <span className="text-emerald-800">{h.date}</span>
-                                <span className="text-emerald-500">${h.value.toLocaleString()}</span>
-                                <span className={`${h.value >= h.cost ? 'text-emerald-700' : 'text-red-800'}`}>
-                                  {h.value >= h.cost ? '+' : ''}{((h.value - h.cost) / h.cost * 100).toFixed(2)}%
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-xs text-emerald-900 font-mono">RUN ANALYSIS MULTIPLE TIMES TO BUILD HISTORY LOG</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* AI insights tab */}
-                  {tab === 'insights' && (
-                    <div className="glass-liquid rounded-xl p-6 border border-emerald-500/20">
-                      {result.insights ? (
-                        <>
-                          <div className="text-[9px] text-emerald-500 font-mono mb-3 flex items-center gap-2">
-                            <span className="blink">█</span> CLAUDE AI PORTFOLIO ANALYSIS OUTPUT
-                          </div>
-                          <p className="text-xs text-emerald-400 font-mono leading-relaxed whitespace-pre-wrap">{result.insights}</p>
-                        </>
-                      ) : (
-                        <p className="text-xs text-emerald-900 font-mono">NO AI INSIGHTS — CHECK API KEY CONFIGURATION</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Alerts tab */}
-                  {tab === 'alerts' && (
-                    <div className="glass-liquid rounded-xl p-4">
-                      <div className="text-[9px] text-emerald-800 font-mono mb-3">ALERT STATUS LOG</div>
-                      {alerts.length > 0 ? (
-                        <div className="space-y-2">
-                          {alerts.map((a, i) => {
-                            const holding = result.holdings.find(h => h.ticker === a.ticker)
-                            return (
-                              <div key={i} className={`border rounded px-3 py-2 font-mono text-xs flex items-center justify-between ${a.triggered ? 'border-amber-600/40 bg-amber-950/20 text-amber-400' : 'border-emerald-900/30 text-emerald-700'}`}>
-                                <span className="font-bold">{a.ticker}</span>
-                                <span>{a.direction === 'above' ? '↑ ABOVE' : '↓ BELOW'} ${a.targetPrice}</span>
-                                {holding && <span>CUR: ${holding.current_price.toFixed(2)}</span>}
-                                <span>{a.triggered ? '⚡ TRIGGERED' : '○ WATCHING'}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-emerald-900 font-mono">NO ACTIVE ALERTS</p>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="glass-liquid rounded-xl flex flex-col items-center justify-center py-16 px-6 gap-6">
-                  <div className="text-4xl">📊</div>
-                  <div className="text-center space-y-2 max-w-xs">
-                    <p className="text-emerald-400 font-mono font-bold text-sm">Your portfolio analysis will appear here</p>
-                    <p className="text-emerald-800 font-mono text-xs leading-relaxed">
-                      Add at least one stock ticker, share count, and buy price in the panel on the left — then hit Run Analysis.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-sm text-center">
-                    {[
-                      { step: '1', label: 'Enter ticker', hint: 'e.g. AAPL, NVDA, MSFT' },
-                      { step: '2', label: 'Add shares + buy price', hint: 'Your cost basis' },
-                      { step: '3', label: 'Run analysis', hint: 'Live price + AI insight' },
-                    ].map(s => (
-                      <div key={s.step} className="border border-emerald-900/30 rounded-lg px-3 py-3 bg-[#030712]/40">
-                        <div className="text-emerald-500 font-mono text-xs font-bold mb-1">STEP {s.step}</div>
-                        <div className="text-emerald-600 font-mono text-[11px] font-medium">{s.label}</div>
-                        <div className="text-emerald-900 font-mono text-[10px] mt-0.5">{s.hint}</div>
+                          )
+                        })}
                       </div>
-                    ))}
+                    )}
+
+                    {/* History */}
+                    {tab === 'allocation' && (
+                      <div className="tw-tab-content">
+                        <div className="tw-tab-content-label">Portfolio value history (30 days)</div>
+                        {history.length >= 2 ? (
+                          <>
+                            <MiniSparkline history={history} />
+                            <div className="mt-3 space-y-1">
+                              {history.slice(-5).reverse().map((h, i) => (
+                                <div key={i} className="flex justify-between text-xs border-b border-emerald-900/20 pb-1.5">
+                                  <span className="text-emerald-800">{h.date}</span>
+                                  <span className="text-emerald-400">${h.value.toLocaleString()}</span>
+                                  <span className={h.value >= h.cost ? 'text-emerald-600' : 'text-red-600'}>
+                                    {h.value >= h.cost ? '+' : ''}{((h.value - h.cost) / h.cost * 100).toFixed(2)}%
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-xs text-emerald-900">Run analysis multiple times to build your history.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* AI insights */}
+                    {tab === 'insights' && (
+                      <div className="tw-tab-content">
+                        {result.insights ? (
+                          <>
+                            <div className="tw-tab-content-label flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                              AI Portfolio Analysis
+                            </div>
+                            <p className="text-sm text-emerald-300 leading-relaxed whitespace-pre-wrap">{result.insights}</p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-emerald-900">No AI insights — check API key configuration.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Alerts tab */}
+                    {tab === 'alerts' && (
+                      <div className="tw-tab-content">
+                        <div className="tw-tab-content-label">Alert status</div>
+                        {alerts.length > 0 ? (
+                          <div className="space-y-2">
+                            {alerts.map((a, i) => {
+                              const holding = result.holdings.find(h => h.ticker === a.ticker)
+                              return (
+                                <div key={i} className={`tw-alert-item ${a.triggered ? 'tw-alert-triggered' : ''}`}>
+                                  <span className="font-semibold">{a.ticker}</span>
+                                  <span>{a.direction === 'above' ? '↑ above' : '↓ below'} ${a.targetPrice}</span>
+                                  {holding && <span className="text-emerald-600">now ${holding.current_price.toFixed(2)}</span>}
+                                  <span className="ml-auto">{a.triggered ? '⚡ Triggered' : '○ Watching'}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-emerald-900">No active alerts.</p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* Empty state */
+                  <div className="tw-empty-state">
+                    <div className="tw-empty-chart">
+                      <NetWorthChart />
+                    </div>
+                    <div className="tw-empty-copy">
+                      <div className="tw-empty-title">Your wealth snapshot appears here</div>
+                      <div className="tw-empty-sub">Add your first holding on the left to see live P&L and AI insights</div>
+                    </div>
+                    <div className="tw-empty-steps">
+                      {[
+                        { step: '1', label: 'Enter ticker', hint: 'e.g. AAPL, NVDA, BTC' },
+                        { step: '2', label: 'Add shares + cost', hint: 'Your cost basis' },
+                        { step: '3', label: 'Analyze', hint: 'Live price + AI insight' },
+                      ].map(s => (
+                        <div key={s.step} className="tw-empty-step">
+                          <div className="tw-empty-step-num">{s.step}</div>
+                          <div className="tw-empty-step-label">{s.label}</div>
+                          <div className="tw-empty-step-hint">{s.hint}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-[10px] text-emerald-900 font-mono">POWERED BY YAHOO FINANCE + AI ANALYSIS</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Why Pro is worth it */}
-        <div className="mt-8 glass-liquid rounded-2xl p-6">
-          <div className="text-center mb-6">
-            <div className="text-[10px] font-mono text-emerald-700 tracking-widest mb-2">// WHY PRO PAYS FOR ITSELF</div>
-            <p className="text-emerald-500 font-mono text-sm">One better trade decision per month covers the cost 10×</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { icon: '📈', title: 'Live P&L Tracking', desc: 'Real-time prices from Yahoo Finance. Know your portfolio value to the penny, always.', badge: 'FREE' },
-              { icon: '🤖', title: 'Claude AI Analysis', desc: 'Institutional-quality AI reads your portfolio, flags concentration risk, suggests moves.', badge: 'PRO' },
-              { icon: '⚠️', title: 'Unlimited Analyses', desc: 'Run as many portfolio checks as you want. No daily cap. Track every market move.', badge: 'PRO' },
-              { icon: '🎯', title: 'Rebalance Signals', desc: 'AI tells you exactly when and how to rebalance to protect gains and cut losses.', badge: 'PRO' },
-            ].map(panel => (
-              <div key={panel.title} className="glass-liquid rounded-xl p-5 reveal-3d border border-emerald-900/20">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="text-xl">{panel.icon}</div>
-                  <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ${panel.badge === 'PRO' ? 'bg-emerald-950/60 text-emerald-500 border border-emerald-700/40' : 'bg-[#030712] text-emerald-900 border border-emerald-900/30'}`}>{panel.badge}</span>
-                </div>
-                <div className="text-xs font-mono font-bold text-emerald-400 mb-1.5 tracking-wide">{panel.title}</div>
-                <div className="text-[10px] font-mono text-emerald-800 leading-relaxed">{panel.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+        {/* ── Why TrackWealth ──────────────────────────────────────── */}
+        <section className="tw-features-section">
+          <div className="tw-features-inner">
+            <div className="tw-section-eyebrow">Features</div>
+            <h2 className="tw-section-title">Wealth intelligence, not just charts</h2>
 
-      {/* Pricing */}
-      <section id="pricing" className="border-t border-emerald-900/30 mt-4 px-4 pb-16">
-        <div className="max-w-3xl mx-auto pt-12">
-          <div className="text-center mb-8">
-            <div className="text-[10px] text-emerald-700 font-mono mb-2">// PRICING MODULE</div>
-            <h2 className="text-2xl font-black font-mono text-emerald-400">WEALTHPILOT.PLANS[]</h2>
-            <p className="text-xs text-emerald-800 mt-2 font-mono">Free forever for basics · Pro for serious investors</p>
-            {isPro && <div className="mt-3 inline-block px-4 py-1.5 bg-emerald-950/60 border border-emerald-500/40 rounded font-mono text-xs text-emerald-400">⚡ PRO ACTIVE — UNLIMITED ANALYSES</div>}
-          </div>
-          <div className="glass-liquid rounded-xl overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-px">
+            <div className="tw-features-grid">
               {[
-                { name: 'FREE', price: '$0', sub: 'forever', features: ['3 analyses / day', 'Live price data', 'AI portfolio insights', 'Price alerts (localStorage)', 'Portfolio history (30 days)', 'Allocation charts'], cta: 'Current plan', highlight: false },
-                { name: 'PRO', price: '$12', sub: '/ month', features: ['Unlimited analyses', 'Email price alerts', 'Export to CSV / PDF', 'Multi-portfolio support', 'AI rebalancing suggestions', 'Priority support'], cta: isPro ? '✓ You are on Pro' : (checkoutLoading ? 'Redirecting...' : 'Upgrade to Pro →'), highlight: true },
+                { icon: '🧠', title: 'AI That Thinks Like a CFO', desc: 'Spots concentration risk, correlation issues, and rebalancing signals — not just bar charts.', badge: 'Pro' },
+                { icon: '⚡', title: 'Real-time P&L', desc: 'Live prices from Yahoo Finance. Know your exact net worth at any moment.', badge: 'Free' },
+                { icon: '🎯', title: 'Smart Price Alerts', desc: 'Set targets and get notified when your thesis plays out.', badge: 'Free' },
+                { icon: '📊', title: 'Financial Health Score', desc: 'A single number that tells you how diversified, profitable and risk-aware you are.', badge: 'Pro' },
+                { icon: '🔒', title: 'No brokerage access', desc: 'You enter tickers manually. Nothing touches your accounts. Bank-grade private.', badge: 'Always' },
+                { icon: '💬', title: 'Natural language AI', desc: "Ask 'Am I overexposed to tech?' and get a straight answer, not a marketing blob.", badge: 'Pro' },
+              ].map(f => (
+                <div key={f.title} className="tw-feature-card glass-liquid card-hover reveal">
+                  <div className="tw-feature-head">
+                    <span className="tw-feature-icon">{f.icon}</span>
+                    <span className={`tw-feature-badge ${f.badge === 'Free' || f.badge === 'Always' ? 'tw-badge-free' : 'tw-badge-pro'}`}>{f.badge}</span>
+                  </div>
+                  <h3 className="tw-feature-title">{f.title}</h3>
+                  <p className="tw-feature-desc">{f.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Pricing ───────────────────────────────────────────────── */}
+        <section id="pricing" className="tw-pricing-section">
+          <div className="tw-pricing-inner">
+            <div className="tw-section-eyebrow">Pricing</div>
+            <h2 className="tw-section-title">Simple, transparent pricing</h2>
+            <p className="tw-pricing-sub">One better trade decision per month covers the cost 10×</p>
+
+            {isPro && (
+              <div className="tw-pro-active-banner">⚡ Pro active — unlimited analyses</div>
+            )}
+
+            <div className="tw-pricing-grid">
+              {[
+                {
+                  name: 'Free', price: '$0', period: 'forever', highlight: false,
+                  features: ['3 analyses per day', 'Live price data', 'AI portfolio insights', 'Price alerts', 'Portfolio history (30 days)', 'Allocation charts'],
+                  cta: 'Get started free', onClick: undefined, disabled: false,
+                },
+                {
+                  name: 'Pro', price: '$12', period: '/ month', highlight: true,
+                  features: ['Unlimited analyses', 'Email price alerts', 'Export to CSV / PDF', 'Multi-portfolio support', 'AI rebalancing signals', 'Priority support'],
+                  cta: isPro ? 'Current plan' : (checkoutLoading ? 'Redirecting...' : 'Upgrade to Pro'),
+                  onClick: !isPro ? handleUpgrade : undefined,
+                  disabled: isPro || checkoutLoading,
+                },
               ].map(plan => (
-                <div key={plan.name} className={`p-8 ${plan.highlight ? 'bg-emerald-950/40' : 'bg-[#030712]/60'}`}>
-                  <div className="text-[10px] font-mono text-emerald-700 mb-1">{plan.highlight ? '// RECOMMENDED' : '// STARTER'}</div>
-                  <div className={`text-3xl font-black font-mono mb-0.5 ${plan.highlight ? 'text-emerald-400' : 'text-emerald-700'}`}>{plan.price}</div>
-                  <div className="text-xs text-emerald-900 font-mono mb-6">{plan.sub}</div>
-                  <ul className="space-y-2 mb-6">
+                <div key={plan.name} className={`tw-plan-card glass-liquid ${plan.highlight ? 'tw-plan-highlight' : ''}`}>
+                  {plan.highlight && <div className="tw-plan-popular">Most popular</div>}
+                  <div className="tw-plan-name">{plan.name}</div>
+                  <div className="tw-plan-price">
+                    <span className="tw-plan-amount">{plan.price}</span>
+                    <span className="tw-plan-period">{plan.period}</span>
+                  </div>
+                  <ul className="tw-plan-features">
                     {plan.features.map(f => (
-                      <li key={f} className={`flex items-start gap-2 text-xs font-mono ${plan.highlight ? 'text-emerald-600' : 'text-emerald-900'}`}>
-                        <span className={plan.highlight ? 'text-emerald-500' : 'text-emerald-800'}>►</span> {f}
+                      <li key={f} className="tw-plan-feature">
+                        <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        {f}
                       </li>
                     ))}
                   </ul>
-                  <button
-                    onClick={plan.highlight && !isPro ? handleUpgrade : undefined}
-                    disabled={plan.highlight && (isPro || checkoutLoading)}
-                    className={`w-full py-2.5 rounded text-xs font-mono font-bold transition-all ${plan.highlight ? (isPro ? 'border border-emerald-500/50 text-emerald-500 cursor-default' : 'border border-emerald-400/60 bg-emerald-900/40 text-emerald-300 hover:bg-emerald-800/60 hover:text-emerald-200 cursor-pointer') : 'border border-emerald-900/50 text-emerald-900 cursor-default'}`}>
+                  <button onClick={plan.onClick} disabled={plan.disabled}
+                    className={`tw-plan-cta btn-press ${plan.highlight ? 'tw-plan-cta-primary' : 'tw-plan-cta-secondary'}`}>
                     {plan.cta}
                   </button>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Competitor comparison */}
-      <section className="border-t border-emerald-900/30 px-4 py-12">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-8">
-            <div className="text-[10px] font-mono text-emerald-700 tracking-widest mb-2">// HOW WE COMPARE</div>
-            <h2 className="text-xl font-black font-mono text-emerald-400">WealthPilot vs alternatives</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:'monospace', fontSize:12 }}>
-              <thead>
-                <tr style={{ borderBottom:'1px solid rgba(16,185,129,0.2)' }}>
-                  {['Feature','WealthPilot','Robinhood','Yahoo Finance','Personal Capital'].map((h,i) => (
-                    <th key={h} style={{ padding:'10px 12px', textAlign:i===0?'left':'center', color: i===1 ? '#10b981' : 'rgba(255,255,255,0.3)', fontWeight:700, fontSize:11, letterSpacing:'0.05em' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ['AI portfolio analysis','✅ Claude AI','❌','❌','⚠️ Basic'],
-                  ['Real-time prices','✅ Free','✅ Free','✅ Free','✅ Free'],
-                  ['Price alerts','✅ Free','✅ Free','✅ Free','✅ Pro only'],
-                  ['No account required','✅','❌ Requires login','✅','❌'],
-                  ['Multi-ticker P&L','✅ Free','✅','✅','✅ Pro only'],
-                  ['Rebalancing advice','✅ AI-powered','❌','❌','⚠️ Manual'],
-                  ['Cost','Free / $12 mo','Free','Free','Free / $40 mo'],
-                ].map(row => (
-                  <tr key={row[0]} style={{ borderBottom:'1px solid rgba(16,185,129,0.08)' }}>
-                    {row.map((cell,i) => (
-                      <td key={i} style={{ padding:'9px 12px', textAlign:i===0?'left':'center',
-                        color: i===1 ? '#10b981' : i===0 ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.25)',
-                        background: i===1 ? 'rgba(16,185,129,0.04)' : 'transparent', fontSize:11 }}>{cell}</td>
+        {/* ── Comparison table ─────────────────────────────────────── */}
+        <section className="tw-compare-section">
+          <div className="tw-compare-inner">
+            <div className="tw-section-eyebrow">Comparison</div>
+            <h2 className="tw-section-title">TrackWealth vs alternatives</h2>
+            <div className="tw-compare-table-wrap">
+              <table className="tw-compare-table">
+                <thead>
+                  <tr>
+                    {['Feature', 'TrackWealth', 'Copilot Money', 'Robinhood', 'Yahoo Finance'].map((h, i) => (
+                      <th key={h} className={i === 1 ? 'tw-compare-th-accent' : 'tw-compare-th'}>{h}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {[
+                    ['AI portfolio analysis', '✅ Advanced', '⚠️ Basic', '❌', '❌'],
+                    ['Real-time prices', '✅ Free', '✅ Connected', '✅ Free', '✅ Free'],
+                    ['No account required', '✅', '❌ Requires login', '❌ Login', '✅'],
+                    ['Financial health score', '✅ Animated', '❌', '❌', '❌'],
+                    ['Rebalancing signals', '✅ AI', '⚠️ Manual', '❌', '❌'],
+                    ['Privacy (no brokerage link)', '✅ Manual entry', '❌ Bank sync', '❌ Full access', '✅'],
+                    ['Cost', 'Free / $12 mo', '$95/yr', 'Free', 'Free'],
+                  ].map(row => (
+                    <tr key={row[0]} className="tw-compare-row">
+                      {row.map((cell, i) => (
+                        <td key={i} className={i === 1 ? 'tw-compare-td-accent' : 'tw-compare-td'}>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Footer */}
-      <footer style={{ borderTop:'1px solid rgba(16,185,129,0.15)', padding:'24px 24px', background:'rgba(3,7,18,0.9)', marginTop:8 }}>
-        <div style={{ maxWidth:900, margin:'0 auto', display:'flex', flexWrap:'wrap', justifyContent:'space-between', alignItems:'center', gap:16 }}>
-          <div>
-            <span style={{ fontFamily:'monospace', fontWeight:900, fontSize:15, color:'#10b981', letterSpacing:'0.1em' }}>WealthPilot</span>
-            <p style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:4, fontFamily:'monospace' }}>AI-powered portfolio tracker. No account needed.</p>
-          </div>
-          <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
-            {[['About','/about'],['Privacy','/privacy'],['Terms','/terms'],['Cookie Policy','/cookies']].map(([label,href]) => (
-              <a key={label} href={href} style={{ fontSize:11, color:'rgba(255,255,255,0.25)', textDecoration:'none', fontFamily:'monospace' }}
-                onMouseOver={e=>(e.currentTarget.style.color='#10b981')} onMouseOut={e=>(e.currentTarget.style.color='rgba(255,255,255,0.25)')}>{label}</a>
-            ))}
-          </div>
-          <p style={{ fontSize:10, color:'rgba(255,255,255,0.15)', fontFamily:'monospace' }}>© 2026 WealthPilot</p>
-        </div>
-      </footer>
-    </main>
+      </main>
 
-    {showGate && (
-      <RegisterGate
-        freeUsed={gateCount}
-        freeLimit={5}
-        freeFeature="analyses"
-        lockedFeature="unlimited portfolio analyses"
-        accentColor="#10b981"
-        site="wealthpilot"
-        onSuccess={onRegistered}
-        onDismiss={dismissGate}
-      />
-    )}
-    <GuidedTour steps={WEALTHPILOT_TOUR} storageKey="wealthpilot_tour_v1" accentColor="#10b981" />
-    <WealthPilotCookieBanner />
-  </>
-  )
-}
-
-function WealthPilotCookieBanner() {
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    if (!localStorage.getItem('wp_cookies_ok')) setVisible(true)
-  }, [])
-  if (!visible) return null
-  return (
-    <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:200, padding:'12px 24px',
-      background:'rgba(3,7,18,0.97)', borderTop:'1px solid rgba(16,185,129,0.2)',
-      backdropFilter:'blur(16px)', display:'flex', alignItems:'center', justifyContent:'space-between',
-      gap:16, flexWrap:'wrap' }}>
-      <p style={{ fontSize:12, color:'rgba(255,255,255,0.45)', maxWidth:600, lineHeight:1.5 }}>
-        WealthPilot uses essential cookies to save your portfolio and alert preferences locally. No tracking, no ads.{' '}
-        <a href="/privacy" style={{ color:'#10b981', textDecoration:'underline', cursor:'pointer' }}>Privacy policy</a>
-      </p>
-      <div style={{ display:'flex', gap:10 }}>
-        <button onClick={() => { localStorage.setItem('wp_cookies_ok','1'); setVisible(false) }}
-          style={{ fontSize:12, fontWeight:700, padding:'7px 20px', borderRadius:8,
-            background:'linear-gradient(135deg,#10b981,#059669)', color:'#fff', border:'none', cursor:'pointer' }}>
-          Accept
-        </button>
-        <button onClick={() => setVisible(false)}
-          style={{ fontSize:12, fontWeight:500, padding:'7px 14px', borderRadius:8,
-            background:'transparent', color:'rgba(255,255,255,0.3)',
-            border:'1px solid rgba(255,255,255,0.1)', cursor:'pointer' }}>
-          Decline
-        </button>
-      </div>
-    </div>
+      {showGate && (
+        <RegisterGate
+          freeUsed={gateCount} freeLimit={5} freeFeature="analyses"
+          lockedFeature="unlimited portfolio analyses"
+          accentColor="#22c55e" site="wealthpilot"
+          onSuccess={onRegistered} onDismiss={dismissGate}
+        />
+      )}
+      <GuidedTour steps={TOUR} storageKey="wealthpilot_tour_v2" accentColor="#22c55e" />
+    </>
   )
 }
