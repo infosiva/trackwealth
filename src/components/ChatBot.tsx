@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 
 const ACCENT = '#22c55e'
 const BOT_NAME = 'WealthBot'
+const BOTTOM_OFFSET = 84
 const WELCOME = "Hi! I can analyze your portfolio or answer investment questions. What would you like to know?"
 const SYSTEM_PROMPT = `You are WealthBot, the AI assistant for TrackWealth — an AI-powered portfolio tracker.
 Help users understand their portfolio performance, explain investment concepts, give market context, and help them use the tracker.
@@ -14,6 +15,7 @@ interface Message { role: 'user' | 'assistant'; content: string }
 export default function ChatBot() {
   const [shown, setShown] = useState(false)
   const [open, setOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: WELCOME }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -24,6 +26,13 @@ export default function ChatBot() {
   useEffect(() => {
     const t = setTimeout(() => setShown(true), 30000)
     return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
   }, [])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
@@ -61,6 +70,23 @@ export default function ChatBot() {
 
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
 
+  const panelStyle: React.CSSProperties = isMobile ? {
+    position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9998,
+    width: '100%', height: `calc(100dvh - ${BOTTOM_OFFSET}px)`,
+    borderRadius: '16px 16px 0 0',
+    background: '#020c07', border: `1px solid ${ACCENT}44`,
+    boxShadow: '0 -8px 40px rgba(0,0,0,0.8)',
+    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    animation: 'wb-slide-bottom 0.3s cubic-bezier(0.23,1,0.32,1)',
+  } : {
+    position: 'fixed', bottom: 88, right: 24, zIndex: 9998,
+    width: 370, height: 500, borderRadius: 12,
+    background: '#020c07', border: `1px solid ${ACCENT}44`,
+    boxShadow: '0 8px 40px rgba(0,0,0,0.8)',
+    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    animation: 'wb-slide 0.2s ease-out',
+  }
+
   if (!shown) return null
 
   return (
@@ -77,9 +103,9 @@ export default function ChatBot() {
       </button>
 
       {open && (
-        <div style={{ position: 'fixed', bottom: 88, right: 24, zIndex: 9998, width: 370, height: 500, borderRadius: 12, background: '#020c07', border: `1px solid ${ACCENT}44`, boxShadow: '0 8px 40px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'wb-slide 0.2s ease-out' }}>
-          <style>{`@keyframes wb-slide{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}} .wb-msg::-webkit-scrollbar{width:4px} .wb-msg::-webkit-scrollbar-thumb{background:${ACCENT}44;border-radius:2px} @keyframes wb-bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}`}</style>
-          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${ACCENT}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: `${ACCENT}12` }}>
+        <div style={panelStyle}>
+          <style>{`@keyframes wb-slide{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}} @keyframes wb-slide-bottom{from{transform:translateY(100%)}to{transform:translateY(0)}} .wb-msg::-webkit-scrollbar{width:4px} .wb-msg::-webkit-scrollbar-thumb{background:${ACCENT}44;border-radius:2px} @keyframes wb-bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}`}</style>
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${ACCENT}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: `${ACCENT}12`, flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 34, height: 34, borderRadius: 8, background: `linear-gradient(135deg, ${ACCENT}, #059669)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📈</div>
               <div>
@@ -91,7 +117,7 @@ export default function ChatBot() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
-          <div className="wb-msg" style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 6px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="wb-msg" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 14px 6px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {messages.map((m, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 <div style={{ maxWidth: '85%', padding: '9px 13px', borderRadius: m.role === 'user' ? '12px 12px 3px 12px' : '12px 12px 12px 3px', background: m.role === 'user' ? ACCENT : 'rgba(255,255,255,0.05)', border: m.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.08)', color: '#f0f0f0', fontSize: 13.5, lineHeight: 1.6, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{m.content}</div>
@@ -106,9 +132,9 @@ export default function ChatBot() {
             )}
             <div ref={bottomRef}/>
           </div>
-          <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 8, alignItems: 'center', background: '#010805' }}>
+          <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 8, alignItems: 'center', background: '#010805', flexShrink: 0, paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
             <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={onKey} placeholder="Ask about markets, portfolio…" disabled={loading}
-              style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${ACCENT}30`, borderRadius: 8, padding: '9px 13px', color: '#f0f0f0', fontSize: 13.5, outline: 'none' }}
+              style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${ACCENT}30`, borderRadius: 8, padding: '9px 13px', color: '#f0f0f0', fontSize: isMobile ? 16 : 13.5, outline: 'none' }}
               onFocus={e => (e.target.style.borderColor = ACCENT)} onBlur={e => (e.target.style.borderColor = `${ACCENT}30`)}/>
             <button onClick={send} disabled={loading || !input.trim()} style={{ width: 38, height: 38, borderRadius: 8, border: 'none', background: input.trim() && !loading ? ACCENT : 'rgba(255,255,255,0.06)', cursor: input.trim() && !loading ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
