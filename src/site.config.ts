@@ -1,8 +1,8 @@
 // site.config.ts — Single source of truth for TrackWealth brand content
 export const siteConfig = {
   name: "TrackWealth",
-  tagline: "AI Investment Portfolio Tracker",
-  description: "Track your stocks, crypto, and mutual funds in one place. AI-powered insights and alerts.",
+  tagline: "See your real net worth, right now",
+  description: "Unlike Monarch or Copilot, TrackWealth connects stocks, crypto, and funds in one AI view — no spreadsheet needed.",
   url: "https://trackwealth.app",
   primaryColor: "#059669",
   accentColor: "#22c55e",
@@ -10,12 +10,12 @@ export const siteConfig = {
   icon: "📈",
   stats: { portfolios: "Join early users", assetsTracked: "Real-time tracking", avgReturn: "AI-powered insights" },
   chatbot: {
-    openingMessage: "Hi! I can analyze your portfolio or answer investment questions. What would you like to know?",
+    openingMessage: "What's your biggest portfolio question right now — performance, allocation, or a specific asset?",
     apiEndpoint: "/api/chat",
   },
   seo: {
-    title: "TrackWealth — AI Investment Portfolio Tracker & Analyzer",
-    description: "Track stocks, crypto & mutual funds with AI insights. Real-time alerts, portfolio analytics.",
+    title: "TrackWealth — See Your Real Net Worth With AI",
+    description: "Track stocks, crypto & mutual funds with AI insights. See your real net worth across every asset class.",
   },
   nav: {
     links: [
@@ -25,7 +25,7 @@ export const siteConfig = {
       { label: "Pricing", href: "/#pricing" },
       { label: "About", href: "/about" },
     ],
-    cta: { label: "Track free →", href: "/#portfolio-form" },
+    cta: { label: "Track my wealth free →", href: "/#portfolio-form" },
   },
 }
 
