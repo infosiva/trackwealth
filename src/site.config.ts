@@ -1,8 +1,8 @@
 // site.config.ts — Single source of truth for TrackWealth brand content
 export const siteConfig = {
   name: "TrackWealth",
-  tagline: "See your real net worth, right now",
-  description: "Unlike Monarch or Copilot, TrackWealth connects stocks, crypto, and funds in one AI view — no spreadsheet needed.",
+  tagline: "Stop tracking. Start deciding.",
+  description: "AI that connects your accounts, spots the patterns, and tells you your next wealth move — not just what happened.",
   url: "https://trackwealth.app",
   primaryColor: "#059669",
   accentColor: "#22c55e",
@@ -14,8 +14,8 @@ export const siteConfig = {
     apiEndpoint: "/api/chat",
   },
   seo: {
-    title: "TrackWealth — See Your Real Net Worth With AI",
-    description: "Track stocks, crypto & mutual funds with AI insights. See your real net worth across every asset class.",
+    title: "TrackWealth — AI Wealth Tracker | Know Your Next Money Move",
+    description: "AI wealth tracker that goes beyond charts — tells you what to do next with your money. Net worth, investments, savings all in one place.",
   },
   nav: {
     links: [
