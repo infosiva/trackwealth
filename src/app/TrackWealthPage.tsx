@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import WealthStats from '@/components/WealthStats'
 import { useGate } from '@/lib/shared/useGate'
 import RegisterGate from '@/lib/shared/RegisterGate'
 import GuidedTour, { type TourStep } from '@/components/GuidedTour'
@@ -23,6 +24,18 @@ const COLORS: Record<string, string> = {
   AAPL:'#22c55e', MSFT:'#4ade80', GOOGL:'#86efac', AMZN:'#16a34a',
   TSLA:'#f87171', META:'#6ee7b7', NVDA:'#34d399', NFLX:'#a7f3d0',
   JPM:'#bbf7d0', default: '#22c55e',
+}
+
+// ─── Asset type pill ─────────────────────────────────────────────────────────
+const CRYPTO_TICKERS = new Set(['BTC','ETH','SOL','BNB','XRP','ADA','DOGE','MATIC','DOT','AVAX','LINK','UNI','LTC'])
+const CASH_TICKERS   = new Set(['USD','GBP','EUR','CASH','USDC','USDT','BUSD'])
+const PROPERTY_TICKERS = new Set(['VNQ','O','SPG','AMT','EQIX','PLD'])
+
+function assetType(ticker: string): { label: string; color: string; bg: string } {
+  if (CRYPTO_TICKERS.has(ticker)) return { label: 'Crypto', color: '#fb923c', bg: 'rgba(251,146,60,0.12)' }
+  if (CASH_TICKERS.has(ticker))   return { label: 'Cash',   color: '#4ade80', bg: 'rgba(74,222,128,0.12)' }
+  if (PROPERTY_TICKERS.has(ticker)) return { label: 'Property', color: '#c084fc', bg: 'rgba(192,132,252,0.12)' }
+  return { label: 'Stock', color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' }
 }
 
 // ─── Animated Net-Worth Chart ─────────────────────────────────────────────────
@@ -152,6 +165,137 @@ function InsightCard({ icon, text, highlight }: { icon: string; text: string; hi
     <div className={`tw-insight-card ${highlight ? 'tw-insight-highlight' : ''}`}>
       <span className="tw-insight-icon">{icon}</span>
       <p className="tw-insight-text">{text}</p>
+    </div>
+  )
+}
+
+// ─── Monthly AI Insight Card ─────────────────────────────────────────────────
+const MONTHLY_INSIGHTS = [
+  "Your savings rate is 18% — increasing to 20% adds £240/year to your emergency fund.",
+  "Markets are up 3.2% this month. Your growth allocation could be reviewed.",
+  "You've tracked 3 consecutive months. Time to review your investment allocation.",
+]
+
+function MonthlyInsightCard() {
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('tw_insight_dismissed') === '1') setDismissed(true)
+    } catch { /* ignore */ }
+  }, [])
+
+  if (dismissed) return null
+
+  const monthIndex = new Date().getMonth() % MONTHLY_INSIGHTS.length
+  const insight = MONTHLY_INSIGHTS[monthIndex]
+
+  function dismiss() {
+    setDismissed(true)
+    try { localStorage.setItem('tw_insight_dismissed', '1') } catch { /* ignore */ }
+  }
+
+  return (
+    <div style={{
+      borderLeft: '3px solid #22c55e',
+      background: 'rgba(2,15,7,0.85)',
+      borderRadius: '0.625rem',
+      padding: '0.875rem 1rem',
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: '0.75rem',
+      position: 'relative',
+      border: '1px solid rgba(34,197,94,0.15)',
+      borderLeftColor: '#22c55e',
+      borderLeftWidth: '3px',
+    }}>
+      <span style={{ fontSize: '1.25rem', flexShrink: 0, lineHeight: 1 }}>💡</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
+          This month&apos;s AI insight
+        </div>
+        <p style={{ fontSize: '0.8125rem', color: '#a7f3d0', lineHeight: 1.5, margin: 0 }}>{insight}</p>
+      </div>
+      <button
+        onClick={dismiss}
+        aria-label="Dismiss insight"
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: '#064e3b', fontSize: '0.875rem', lineHeight: 1,
+          padding: '0.125rem', flexShrink: 0, transition: 'color 0.15s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#064e3b' }}
+      >✕</button>
+    </div>
+  )
+}
+
+// ─── Net Worth Trajectory Visual ─────────────────────────────────────────────
+const TRAJECTORY_BARS = [
+  { label: 'M-4', height: 40 },
+  { label: 'M-3', height: 52 },
+  { label: 'M-2', height: 61 },
+  { label: 'M-1', height: 75 },
+  { label: 'Now', height: 90 },
+]
+
+function NetWorthTrajectory() {
+  const trend = TRAJECTORY_BARS[TRAJECTORY_BARS.length - 1].height > TRAJECTORY_BARS[0].height
+
+  return (
+    <div style={{
+      background: 'rgba(2,15,7,0.7)',
+      border: '1px solid rgba(5,150,105,0.12)',
+      borderRadius: '0.75rem',
+      padding: '1rem 1.25rem',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.875rem' }}>
+        <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Net Worth Trajectory
+        </span>
+        <span style={{
+          fontSize: '0.6875rem', fontWeight: 700, padding: '0.125rem 0.5rem',
+          borderRadius: '9999px', background: trend ? 'rgba(34,197,94,0.12)' : 'rgba(248,113,113,0.12)',
+          color: trend ? '#4ade80' : '#f87171',
+        }}>
+          {trend ? '▲ Trending up' : '▼ Trending down'}
+        </span>
+      </div>
+
+      {/* Bars */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', height: '4.5rem' }}>
+        {TRAJECTORY_BARS.map((bar, i) => (
+          <div key={bar.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', height: '100%', justifyContent: 'flex-end' }}>
+            <div
+              style={{
+                width: '100%',
+                height: `${bar.height}%`,
+                background: i === TRAJECTORY_BARS.length - 1
+                  ? 'linear-gradient(180deg, #4ade80 0%, #16a34a 100%)'
+                  : 'rgba(34,197,94,0.25)',
+                borderRadius: '3px 3px 0 0',
+                transition: 'height 0.6s cubic-bezier(0.23,1,0.32,1)',
+                boxShadow: i === TRAJECTORY_BARS.length - 1 ? '0 0 8px rgba(74,222,128,0.35)' : 'none',
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Month labels */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.375rem' }}>
+        {TRAJECTORY_BARS.map(bar => (
+          <div key={bar.label} style={{ flex: 1, textAlign: 'center', fontSize: '0.625rem', color: '#064e3b', fontFamily: 'JetBrains Mono, monospace' }}>
+            {bar.label}
+          </div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <p style={{ fontSize: '0.6875rem', color: '#064e3b', marginTop: '0.625rem', textAlign: 'center' }}>
+        Connect your accounts to see real data
+      </p>
     </div>
   )
 }
@@ -290,10 +434,10 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
 
   return (
     <>
-      {/* Ambient background */}
-      <div className="tw-bg-orb tw-orb-1" aria-hidden="true" />
-      <div className="tw-bg-orb tw-orb-2" aria-hidden="true" />
-      <div className="tw-bg-orb tw-orb-3" aria-hidden="true" />
+      {/* Gold terminal ambient background */}
+      <div className="tw-gold-orb tw-gold-orb-1" aria-hidden="true" />
+      <div className="tw-gold-orb tw-gold-orb-2" aria-hidden="true" />
+      <div className="tw-gold-orb tw-gold-orb-3" aria-hidden="true" />
       <div className="tw-grid-overlay" aria-hidden="true" />
 
       <main className="min-h-screen relative z-10">
@@ -317,114 +461,176 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
           </div>
         </div>
 
-        {/* ── Hero ─────────────────────────────────────────────────── */}
-        <section className="tw-hero">
-          <div className="tw-hero-inner">
+        {/* ── Bloomberg Terminal Hero ───────────────────────────────── */}
+        <section className="tw-terminal-hero">
+          <div className="tw-terminal-hero-inner">
 
-            {/* Left: copy + chart */}
-            <div className="tw-hero-left">
-              <div className="tw-badge fade-up">
-                <span className="tw-badge-dot" />
-                AI-powered · Real-time · No brokerage login
+            {/* ── Left: copy + portfolio input ── */}
+            <div className="tw-terminal-left">
+
+              {/* Live badge */}
+              <div className="tw-live-badge fade-up">
+                <span className="tw-live-dot" />
+                LIVE MARKET DATA · AI-POWERED · FREE TO START
               </div>
 
-              <h1 className="tw-headline fade-up delay-75">
-                Know exactly where
-                <br />
-                <span className="tw-headline-accent">you stand financially</span>
+              {/* Headline */}
+              <h1 className="tw-terminal-headline fade-up delay-75">
+                Your portfolio.
+                <span className="tw-terminal-headline-gold">
+                  Institutional-grade intelligence.
+                </span>
               </h1>
 
-              <p className="tw-subhead fade-up delay-150">
-                Your personal AI financial advisor. Tracks investments, spots spending patterns, and gives you the same insights wealth managers charge $500/hr for.
+              {/* Subtext */}
+              <p className="tw-terminal-sub fade-up delay-150">
+                Enter any stock portfolio — get live P&amp;L, AI risk analysis, rebalancing advice,
+                and price alerts in seconds. What hedge funds charge $10K/yr for, now $12/mo.
               </p>
 
-              {/* What would you like to track? */}
-              <div className="tw-track-selector fade-up delay-200">
-                <span className="tw-track-label">What would you like to track?</span>
-                <div className="tw-track-pills">
-                  {trackModes.map(m => (
-                    <button key={m} onClick={() => setTrackMode(m)}
-                      className={`tw-track-pill ${trackMode === m ? 'tw-track-pill-active' : ''}`}>
-                      {m === 'Investments' && '📈'} {m === 'Spending' && '💳'} {m === 'Savings' && '🏦'} {m === 'Net Worth' && '💰'} {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="tw-hero-cta fade-up delay-300">
-                <a href="#portfolio-form"
-                  className="tw-btn-primary btn-press">
-                  Start tracking free
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              {/* Portfolio input + CTA (inline row) */}
+              <div className="tw-portfolio-input-wrap fade-up delay-200">
+                <input
+                  className="tw-portfolio-input"
+                  placeholder="AAPL 50, MSFT 30, NVDA 20..."
+                  readOnly
+                  aria-label="Portfolio tickers example"
+                />
+                <a href="#portfolio-form" className="tw-terminal-cta">
+                  Analyse My Portfolio
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
                 </a>
-                {!isPro && (
-                  <button onClick={handleUpgrade} disabled={checkoutLoading}
-                    className="tw-btn-secondary btn-press">
-                    {checkoutLoading ? 'Loading...' : 'Upgrade to Pro — $12/mo'}
-                  </button>
-                )}
               </div>
 
-              {/* Trust signals */}
-              <div className="tw-trust-row fade-up delay-400">
-                {['No credit card', 'Bank-grade security', '3 free analyses/day'].map(t => (
-                  <span key={t} className="tw-trust-item">
-                    <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    {t}
+              {/* Trust pills */}
+              <div className="tw-terminal-trust fade-up delay-300">
+                {[
+                  'No brokerage login needed',
+                  'Yahoo Finance + Claude AI',
+                  '3 free analyses daily',
+                ].map(pill => (
+                  <span key={pill} className="tw-terminal-trust-pill">
+                    <span className="tw-terminal-trust-check">✓</span>
+                    {pill}
                   </span>
                 ))}
               </div>
             </div>
 
-            {/* Right: demo dashboard card */}
+            {/* ── Right: Bloomberg terminal panel ── */}
             <div className="tw-hero-right scale-in delay-200">
-              <div className="tw-demo-card">
-                {/* Card header */}
-                <div className="tw-demo-header">
-                  <div>
-                    <div className="tw-demo-label">Total Net Worth</div>
-                    <div className="tw-demo-value">$142,830</div>
-                    <div className="tw-demo-delta">
-                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
-                      +$8,420 this month (+6.3%)
-                    </div>
+              <div className="tw-terminal-panel">
+
+                {/* Header bar */}
+                <div className="tw-terminal-header">
+                  <div className="tw-terminal-brand">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d4a853" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                      <polyline points="16 7 22 7 22 13" />
+                    </svg>
+                    WealthPilot
+                    <span style={{ color: 'rgba(212,168,83,0.35)', fontWeight: 400 }}>•</span>
+                    <span style={{ color: 'rgba(209,213,219,0.45)', fontWeight: 400 }}>TERMINAL</span>
                   </div>
-                  <HealthMeter score={78} />
-                </div>
-
-                {/* Chart */}
-                <div className="tw-demo-chart">
-                  <NetWorthChart />
-                </div>
-
-                {/* AI Insight callouts */}
-                <div className="tw-insights-stack">
-                  <InsightCard icon="💡" text="You're spending 23% more on dining than last month" highlight />
-                  <InsightCard icon="📈" text="NVDA up 34% — consider taking partial profits" />
-                  <InsightCard icon="🎯" text="On track to hit $200k net worth by Q3" />
-                </div>
-
-                {/* Mini portfolio overview */}
-                <div className="tw-demo-holdings">
-                  {[
-                    { ticker: 'NVDA', value: '$42,100', change: '+34%', up: true },
-                    { ticker: 'AAPL', value: '$28,300', change: '+12%', up: true },
-                    { ticker: 'TSLA', value: '$11,200', change: '-8%', up: false },
-                  ].map(h => (
-                    <div key={h.ticker} className="tw-holding-row">
-                      <div className="tw-holding-dot" style={{ background: COLORS[h.ticker] }} />
-                      <span className="tw-holding-ticker">{h.ticker}</span>
-                      <span className="tw-holding-value">{h.value}</span>
-                      <span className={h.up ? 'tw-holding-up' : 'tw-holding-down'}>{h.change}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div className="tw-terminal-live-pill">
+                      <span className="tw-terminal-live-pill-dot" />
+                      LIVE
                     </div>
-                  ))}
+                    <div className="tw-terminal-tab">AI Insights</div>
+                  </div>
                 </div>
+
+                {/* 2×2 metric grid */}
+                <div className="tw-metric-grid">
+                  {/* Portfolio value */}
+                  <div className="tw-metric-card">
+                    <div className="tw-metric-label">Portfolio</div>
+                    <div className="tw-metric-value">$124,840</div>
+                    <div className="tw-metric-sub tw-metric-green">+$1,247 today  ↑1.2%</div>
+                  </div>
+                  {/* Best performer */}
+                  <div className="tw-metric-card">
+                    <div className="tw-metric-label">Best Performer</div>
+                    <div className="tw-metric-value tw-metric-green">NVDA</div>
+                    <div className="tw-metric-sub tw-metric-green">+18.4% this month</div>
+                  </div>
+                  {/* Risk score */}
+                  <div className="tw-metric-card">
+                    <div className="tw-metric-label">Risk Score</div>
+                    <div className="tw-metric-value tw-metric-gold">Low</div>
+                    <div className="tw-metric-sub tw-metric-gold">23 / 100</div>
+                  </div>
+                  {/* Rebalance */}
+                  <div className="tw-metric-card">
+                    <div className="tw-metric-label">Rebalance</div>
+                    <div className="tw-metric-value tw-metric-amber">2</div>
+                    <div className="tw-metric-sub tw-metric-amber">suggestions pending</div>
+                  </div>
+                </div>
+
+                {/* Sparkline chart */}
+                <div className="tw-sparkline-wrap">
+                  <div className="tw-sparkline-header">
+                    <span className="tw-sparkline-label">Portfolio value — 30D</span>
+                    <span className="tw-sparkline-delta">▲ +12.3%</span>
+                  </div>
+                  <svg
+                    className="tw-sparkline-svg"
+                    viewBox="0 0 400 52"
+                    preserveAspectRatio="none"
+                    aria-hidden="true"
+                  >
+                    <defs>
+                      <linearGradient id="sparkGold" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#d4a853" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#d4a853" stopOpacity="0.01" />
+                      </linearGradient>
+                      <filter id="sparkGlow">
+                        <feGaussianBlur stdDeviation="1.5" result="blur" />
+                        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                      </filter>
+                    </defs>
+                    {/* Area fill */}
+                    <path
+                      className="tw-sparkline-area"
+                      d="M0,45 L40,42 L80,38 L120,34 L160,30 L200,24 L240,20 L280,16 L320,11 L360,8 L400,4 L400,52 L0,52 Z"
+                      fill="url(#sparkGold)"
+                    />
+                    {/* Line */}
+                    <path
+                      className="tw-sparkline-path"
+                      d="M0,45 L40,42 L80,38 L120,34 L160,30 L200,24 L240,20 L280,16 L320,11 L360,8 L400,4"
+                      fill="none"
+                      stroke="#d4a853"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      filter="url(#sparkGlow)"
+                    />
+                    {/* Live dot */}
+                    <circle cx="400" cy="4" r="3" fill="#d4a853" filter="url(#sparkGlow)" style={{ animation: 'livePulse 2s ease-in-out infinite' }} />
+                  </svg>
+                </div>
+
+                {/* Footer */}
+                <div className="tw-terminal-footer">
+                  <span className="tw-terminal-sync">
+                    <span className="tw-terminal-sync-dot" />
+                    Last synced 2 min ago
+                  </span>
+                  <div className="tw-terminal-corner-dots">
+                    <span className="tw-terminal-corner-dot" style={{ background: '#ef4444', opacity: 0.6 }} />
+                    <span className="tw-terminal-corner-dot" style={{ background: '#f59e0b', opacity: 0.6 }} />
+                    <span className="tw-terminal-corner-dot" style={{ background: '#10b981', opacity: 0.6 }} />
+                  </div>
+                </div>
+
               </div>
             </div>
+
           </div>
         </section>
 
@@ -470,6 +676,15 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
           <div className="tw-app-inner">
             <div className="tw-section-eyebrow">Portfolio tracker</div>
             <h2 className="tw-section-title">Analyze your portfolio now</h2>
+
+            {/* Monthly AI Insight + Trajectory strip */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }} className="tw-insight-strip">
+              <MonthlyInsightCard />
+              <NetWorthTrajectory />
+            </div>
+
+            {/* Dashboard stats strip */}
+            <WealthStats />
 
             <div className="tw-app-grid">
               {/* Input panel */}
@@ -626,16 +841,20 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                         {result.holdings.filter(h => !h.error).map(h => {
                           const alloc = (h.current_value / result.total_value * 100).toFixed(1)
                           const color = COLORS[h.ticker] ?? COLORS.default
+                          const type = assetType(h.ticker)
                           return (
                             <div key={h.ticker} className="tw-position-row">
                               <div className="col-span-3 flex items-center gap-2">
                                 <div className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: color }} />
-                                <span className="font-semibold text-sm" style={{ color }}>{h.ticker}</span>
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-semibold text-sm" style={{ color }}>{h.ticker}</span>
+                                  <span className="text-[9px] px-1.5 py-px rounded font-semibold" style={{ color: type.color, background: type.bg }}>{type.label}</span>
+                                </div>
                               </div>
                               <span className="col-span-2 text-right text-xs text-emerald-400">${h.current_price.toFixed(2)}</span>
                               <span className="col-span-2 text-right text-xs text-white">${h.current_value.toLocaleString()}</span>
                               <span className={`col-span-2 text-right text-xs font-semibold ${h.gain_loss_pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {h.gain_loss_pct >= 0 ? '+' : ''}{h.gain_loss_pct.toFixed(2)}%
+                                {h.gain_loss_pct >= 0 ? '▲' : '▼'} {Math.abs(h.gain_loss_pct).toFixed(2)}%
                               </span>
                               <div className="col-span-3 flex items-center justify-end gap-2">
                                 <div className="flex-1 h-1 bg-emerald-950/60 rounded overflow-hidden max-w-12">

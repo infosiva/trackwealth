@@ -1696,3 +1696,388 @@ pre {
 .aurora-secondary { top: 35%; right: -12%; width: min(550px, 80vw); height: min(550px, 80vw); background: radial-gradient(circle, color-mix(in srgb, var(--theme-secondary, #a78bfa) 20%, transparent) 0%, transparent 70%); animation: aurora-drift 24s ease-in-out infinite alternate-reverse; }
 .aurora-third { bottom: -10%; left: 35%; width: min(480px, 70vw); height: min(480px, 70vw); background: radial-gradient(circle, color-mix(in srgb, var(--theme-primary, #7c3aed) 18%, transparent) 0%, transparent 70%); animation: aurora-drift 30s ease-in-out infinite alternate; }
 @keyframes aurora-drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(30px, 20px) scale(1.08); } }
+
+/* ══════════════════════════════════════════════
+   BLOOMBERG TERMINAL HERO — Gold accent system
+   bg: #050508  gold: #d4a853  em: #10b981  red: #ef4444
+══════════════════════════════════════════════ */
+
+/* Ambient gold orbs — opacity capped at 0.08 */
+@keyframes goldOrbDrift {
+  0%   { transform: translate(0, 0) scale(1); }
+  40%  { transform: translate(24px, -18px) scale(1.04); }
+  70%  { transform: translate(-14px, 22px) scale(0.97); }
+  100% { transform: translate(10px, -10px) scale(1.02); }
+}
+.tw-gold-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+.tw-gold-orb-1 {
+  width: 640px; height: 640px;
+  background: radial-gradient(ellipse, rgba(212,168,83,0.08) 0%, transparent 70%);
+  top: -220px; left: -160px;
+  animation: goldOrbDrift 16s ease-in-out infinite alternate;
+}
+.tw-gold-orb-2 {
+  width: 480px; height: 480px;
+  background: radial-gradient(ellipse, rgba(16,185,129,0.06) 0%, transparent 70%);
+  top: 25%; right: -120px;
+  animation: goldOrbDrift 22s ease-in-out infinite alternate-reverse;
+}
+.tw-gold-orb-3 {
+  width: 360px; height: 360px;
+  background: radial-gradient(ellipse, rgba(212,168,83,0.05) 0%, transparent 70%);
+  bottom: 15%; left: 30%;
+  animation: goldOrbDrift 28s ease-in-out infinite alternate;
+}
+
+/* ── Terminal hero layout ── */
+.tw-terminal-hero {
+  padding: 5.5rem 1.25rem 3rem;
+  position: relative;
+}
+.tw-terminal-hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .tw-terminal-hero-inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+  }
+}
+
+/* ── Left panel ── */
+.tw-terminal-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Live market badge */
+.tw-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(212,168,83,0.06);
+  border: 1px solid rgba(212,168,83,0.18);
+  border-radius: 999px;
+  padding: 0.35rem 0.95rem;
+  width: fit-content;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(212,168,83,0.85);
+  box-shadow: 0 0 12px rgba(212,168,83,0.06);
+}
+.tw-live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: livePulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px #10b981; }
+  50%       { opacity: 0.5; box-shadow: 0 0 14px #10b981; }
+}
+
+/* Terminal headline */
+.tw-terminal-headline {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 900;
+  line-height: 0.97;
+  letter-spacing: -0.04em;
+  color: #f5f5f7;
+}
+.tw-terminal-headline-gold {
+  display: block;
+  background: linear-gradient(135deg, #d4a853 0%, #f0c96a 50%, #d4a853 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 22px rgba(212,168,83,0.3));
+}
+
+/* Subtext */
+.tw-terminal-sub {
+  font-size: 0.95rem;
+  line-height: 1.72;
+  color: rgba(209,213,219,0.55);
+  max-width: 44ch;
+}
+
+/* Portfolio input row */
+.tw-portfolio-input-wrap {
+  position: relative;
+  display: flex;
+  gap: 0;
+}
+.tw-portfolio-input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(212,168,83,0.2);
+  border-right: none;
+  border-radius: 0.5rem 0 0 0.5rem;
+  padding: 0.85rem 1rem;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.82rem;
+  color: #f5f5f7;
+  outline: none;
+  transition: border-color 150ms, background 150ms;
+}
+.tw-portfolio-input::placeholder { color: rgba(212,168,83,0.3); }
+.tw-portfolio-input:focus {
+  background: rgba(212,168,83,0.04);
+  border-color: rgba(212,168,83,0.4);
+}
+
+/* Gold CTA button */
+.tw-terminal-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: linear-gradient(135deg, #d4a853 0%, #c49040 100%);
+  color: #0a0805;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 0 20px rgba(212,168,83,0.25), 0 4px 12px rgba(0,0,0,0.4);
+  transition: box-shadow 150ms, transform 100ms;
+  text-decoration: none;
+}
+.tw-terminal-cta:hover {
+  box-shadow: 0 0 32px rgba(212,168,83,0.45), 0 6px 20px rgba(0,0,0,0.5);
+}
+.tw-terminal-cta:active { transform: scale(0.97); }
+
+/* Trust pills */
+.tw-terminal-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.tw-terminal-trust-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: rgba(16,185,129,0.7);
+}
+.tw-terminal-trust-check {
+  color: #10b981;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* ── Right panel — terminal card ── */
+.tw-terminal-panel {
+  background: rgba(5,5,8,0.92);
+  border: 1px solid rgba(212,168,83,0.15);
+  border-radius: 0.875rem;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow:
+    0 0 50px rgba(212,168,83,0.06),
+    0 24px 64px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(212,168,83,0.1);
+}
+
+/* Terminal header bar */
+.tw-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  background: rgba(212,168,83,0.04);
+  border-bottom: 1px solid rgba(212,168,83,0.1);
+}
+.tw-terminal-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #d4a853;
+  letter-spacing: 0.04em;
+}
+.tw-terminal-live-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #10b981;
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.2);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+.tw-terminal-live-pill-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  animation: livePulse 1.8s ease-in-out infinite;
+}
+.tw-terminal-tab {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: rgba(212,168,83,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(212,168,83,0.12);
+  border-radius: 0.25rem;
+  padding: 0.2rem 0.5rem;
+}
+
+/* 2x2 metric grid */
+.tw-metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(212,168,83,0.08);
+  border-bottom: 1px solid rgba(212,168,83,0.08);
+}
+.tw-metric-card {
+  background: #050508;
+  padding: 0.875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.tw-metric-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(209,213,219,0.4);
+}
+.tw-metric-value {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f5f5f7;
+  letter-spacing: -0.01em;
+}
+.tw-metric-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.67rem;
+  font-weight: 600;
+}
+.tw-metric-green  { color: #10b981; }
+.tw-metric-gold   { color: #d4a853; }
+.tw-metric-red    { color: #ef4444; }
+.tw-metric-amber  { color: #f59e0b; }
+
+/* Sparkline section */
+.tw-sparkline-wrap {
+  padding: 0.875rem 1rem 0;
+  border-bottom: 1px solid rgba(212,168,83,0.07);
+}
+.tw-sparkline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+.tw-sparkline-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(212,168,83,0.5);
+}
+.tw-sparkline-delta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: #10b981;
+}
+.tw-sparkline-svg {
+  display: block;
+  width: 100%;
+  height: 52px;
+}
+
+/* Animated sparkline — stroke-dashoffset trick */
+@keyframes sparklineDraw {
+  from { stroke-dashoffset: 540; }
+  to   { stroke-dashoffset: 0; }
+}
+.tw-sparkline-path {
+  stroke-dasharray: 540;
+  stroke-dashoffset: 540;
+  animation: sparklineDraw 1.8s cubic-bezier(0.23,1,0.32,1) 0.4s forwards;
+}
+.tw-sparkline-area {
+  opacity: 0;
+  animation: fadeIn 0.5s ease 2.1s forwards;
+}
+
+/* Terminal footer */
+.tw-terminal-footer {
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tw-terminal-sync {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  color: rgba(209,213,219,0.3);
+  letter-spacing: 0.04em;
+}
+.tw-terminal-sync-dot {
+  display: inline-block;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 5px #10b981;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+  animation: livePulse 2.5s ease-in-out infinite;
+}
+.tw-terminal-corner-dots {
+  display: flex;
+  gap: 0.25rem;
+}
+.tw-terminal-corner-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+
+/* prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .tw-gold-orb,
+  .tw-sparkline-path,
+  .tw-sparkline-area,
+  .tw-live-dot,
+  .tw-terminal-live-pill-dot,
+  .tw-terminal-sync-dot {
+    animation: none !important;
+  }
+  .tw-sparkline-path { stroke-dashoffset: 0 !important; }
+  .tw-sparkline-area { opacity: 1 !important; }
+}
