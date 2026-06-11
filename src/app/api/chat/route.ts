@@ -1,3 +1,4 @@
+import { reportToTaskFlow } from '@/lib/reportToTaskFlow'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -28,9 +29,9 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama-3.1-8b-instant',
         messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        max_tokens: 600,
+        max_tokens: 300,
         temperature: 0.5,
         stream: true,
       }),
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok || !res.body) return NextResponse.json({ error: 'AI request failed' }, { status: 502 })
 
+    void reportToTaskFlow({ project: 'trackwealth', agentName: 'ChatBot', status: 'completed', message: 'Chat message processed' })
     const readable = new ReadableStream({
       async start(controller) {
         const reader = res.body!.getReader()
