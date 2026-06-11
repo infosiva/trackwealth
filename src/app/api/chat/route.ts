@@ -1,5 +1,6 @@
 import { reportToTaskFlow } from '@/lib/reportToTaskFlow'
 import { NextRequest, NextResponse } from 'next/server'
+import { AI_LIMITER } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
 
@@ -13,6 +14,7 @@ Help users understand their portfolio performance, explain investment concepts, 
 Be clear, data-driven, and concise. Always clarify you're providing information, not financial advice.`
 
 export async function POST(req: NextRequest) {
+  const limited = AI_LIMITER.check(req); if (limited) return limited
   try {
     const body = await req.json()
     const messages: Message[] = body.messages

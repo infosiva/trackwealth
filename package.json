@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.39.0",
     "@stripe/stripe-js": "^9.4.0",
     "@tremor/react": "^3.18.7",
+    "@vercel/edge-config": "^1.4.3",
     "clsx": "^2.1.1",
     "lucide-react": "^1.14.0",
     "next": "15.3.9",

@@ -6,12 +6,15 @@ import Footer from '../../components/Footer'
 import DesignEffects from '@/components/DesignEffects'
 import AnimatedBackground from '@/components/AnimatedBackground'
 import ChatBot from '@/components/ChatBot'
+import FeedbackWidget from '@/components/FeedbackWidget'
 import { getSiteFlags } from '@/lib/flags'
 import BackToTop from '@/components/BackToTop'
+import FloatingChatWrapper from '@/components/FloatingChatWrapper'
 import type { BrandConfig } from '@/components/SharedNavbar'
 import CookieConsent from "../../components/CookieConsent"
 import StickyFooterCTA from "../../components/StickyFooterCTA"
 import { siteConfig } from '@/site.config'
+import { loadSiteTheme, buildThemeStyleTag, isWidgetHidden } from '@/lib/theme-loader'
 
 const brand: BrandConfig = {
   name: siteConfig.name,
@@ -41,12 +44,13 @@ export const metadata: Metadata = {
     locale: 'en_US',
     siteName: siteConfig.name,
     url: siteConfig.url,
-    images: [{ url: `${siteConfig.url}/og.png`, width: 1200, height: 630, alt: `${siteConfig.name} — AI Investment Tracker` }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: `${siteConfig.name} — AI Investment Tracker` }],
   },
   twitter: {
     card: 'summary_large_image',
     title: siteConfig.seo.title,
     description: siteConfig.seo.description,
+    images: ['/opengraph-image'],
   },
   robots: {
     index: true,
@@ -78,7 +82,17 @@ const faqJsonLd = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const flags = await getSiteFlags('trackwealth')
+  const [flags, theme] = await Promise.all([
+    getSiteFlags('trackwealth'),
+    loadSiteTheme('trackwealth'),
+  ])
+
+  const themeCSS = buildThemeStyleTag(theme, {
+    background: '#020f07',
+    primary: '#059669',
+    secondary: '#34d399',
+  })
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -108,11 +122,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             background: rgba(2,15,7,0.7) !important;
             border-color: rgba(5,150,105,0.12) !important;
           }
-          /* Terminal-style number formatting */
           .number-green { color: #34d399; font-family: 'JetBrains Mono', monospace; }
           .number-red   { color: #f87171; font-family: 'JetBrains Mono', monospace; }
           @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          ${themeCSS}
         `}} />
       </head>
       <body className="flex flex-col min-h-screen">
@@ -125,18 +139,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SharedNavbar brand={brand} />
         <main className="flex-1 pt-16">{children}</main>
         <Footer siteName={siteConfig.name} />
-        {flags.chatbot && <ChatBot />}
-        <BackToTop accentColor="#22c55e" />
+        {flags.chatbot && !isWidgetHidden(theme, 'chatbot') && <ChatBot />}
+        {!isWidgetHidden(theme, 'backToTop') && <BackToTop accentColor="#059669" />}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4237294630161176"
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-        <CookieConsent />
-        <StickyFooterCTA />
+        {!isWidgetHidden(theme, 'cookieConsent') && <CookieConsent />}
+        {!isWidgetHidden(theme, 'stickyFooterCTA') && <StickyFooterCTA />}
+        <FloatingChatWrapper />
         <Script defer data-domain="trackwealth.app" src="https://plausible.io/js/script.js" strategy="afterInteractive" />
         <Script defer data-site="trackwealth.app" src="http://31.97.56.148:3098/t.js" strategy="afterInteractive" />
+        <FeedbackWidget siteName="TrackWealth" accentColor="#0ea5e9" position="left" />
       </body>
     </html>
   )
