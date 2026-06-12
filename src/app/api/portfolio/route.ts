@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callAI } from '@/lib/ai'
+import { AI_LIMITER } from '@/lib/rateLimit'
 
 interface HoldingInput { ticker: string; shares: number; buy_price: number }
 
@@ -17,6 +18,7 @@ async function fetchPrice(ticker: string): Promise<number> {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = AI_LIMITER.check(req); if (limited) return limited
   try {
     const { holdings, question }: { holdings: HoldingInput[]; question?: string } = await req.json()
 
