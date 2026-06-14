@@ -9,9 +9,9 @@
    via CSS vars injected in layout.tsx
 ───────────────────────────────────────── */
 :root {
-  --background: #060610;
-  --surface-1:  #0c0c18;
-  --surface-2:  #111120;
+  --background: #0a0e17;
+  --surface-1:  #0f1420;
+  --surface-2:  #161d2e;
   --foreground: #ededf0;
   --text-2:     #8e8ea0;
   --text-3:     #52525e;
@@ -30,9 +30,9 @@
   --radius-xl: 1.5rem;
 
   /* Theme vars — injected by layout.tsx */
-  --theme-primary:   #7c3aed;
-  --theme-secondary: #a78bfa;
-  --theme-base:      #060610;
+  --theme-primary:   #10b981;
+  --theme-secondary: #34d399;
+  --theme-base:      #0a0e17;
 }
 
 /* ─────────────────────────────────────────
@@ -1689,13 +1689,6 @@ pre {
     grid-template-columns: 1fr;
   }
 }
-
-/* ── Aurora background blobs ── */
-.aurora { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: -1; will-change: transform; }
-.aurora-primary { top: -15%; left: -10%; width: min(700px, 90vw); height: min(700px, 90vw); background: radial-gradient(circle, color-mix(in srgb, var(--theme-primary, #7c3aed) 30%, transparent) 0%, transparent 70%); animation: aurora-drift 18s ease-in-out infinite alternate; }
-.aurora-secondary { top: 35%; right: -12%; width: min(550px, 80vw); height: min(550px, 80vw); background: radial-gradient(circle, color-mix(in srgb, var(--theme-secondary, #a78bfa) 20%, transparent) 0%, transparent 70%); animation: aurora-drift 24s ease-in-out infinite alternate-reverse; }
-.aurora-third { bottom: -10%; left: 35%; width: min(480px, 70vw); height: min(480px, 70vw); background: radial-gradient(circle, color-mix(in srgb, var(--theme-primary, #7c3aed) 18%, transparent) 0%, transparent 70%); animation: aurora-drift 30s ease-in-out infinite alternate; }
-@keyframes aurora-drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(30px, 20px) scale(1.08); } }
 
 /* ══════════════════════════════════════════════
    BLOOMBERG TERMINAL HERO — Gold accent system

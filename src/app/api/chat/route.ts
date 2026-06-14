@@ -9,9 +9,10 @@ interface Message {
   content: string
 }
 
-const DEFAULT_SYSTEM = `You are WealthBot, the AI assistant for WealthPilot — an AI-powered portfolio tracker.
+const DEFAULT_SYSTEM = `You are WealthBot, the AI assistant for TrackWealth — an AI-powered portfolio tracker.
 Help users understand their portfolio performance, explain investment concepts, give market context, and help them use the tracker.
-Be clear, data-driven, and concise. Always clarify you're providing information, not financial advice.`
+Be clear, data-driven, and concise. Always clarify you're providing information, not financial advice.
+If asked anything outside investing, portfolios, or TrackWealth, respond: "I'm trained for TrackWealth. For that, try Google or ChatGPT!"`
 
 export async function POST(req: NextRequest) {
   const limited = AI_LIMITER.check(req); if (limited) return limited

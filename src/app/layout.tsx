@@ -9,7 +9,6 @@ import ChatBot from '@/components/ChatBot'
 import FeedbackWidget from '@/components/FeedbackWidget'
 import { getSiteFlags } from '@/lib/flags'
 import BackToTop from '@/components/BackToTop'
-import FloatingChatWrapper from '@/components/FloatingChatWrapper'
 import type { BrandConfig } from '@/components/SharedNavbar'
 import CookieConsent from "../../components/CookieConsent"
 import StickyFooterCTA from "../../components/StickyFooterCTA"
@@ -88,8 +87,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   ])
 
   const themeCSS = buildThemeStyleTag(theme, {
-    background: '#020f07',
-    primary: '#059669',
+    background: '#0a0e17',
+    primary: '#10b981',
     secondary: '#34d399',
   })
 
@@ -104,16 +103,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <style dangerouslySetInnerHTML={{ __html: `
           :root {
-            --theme-primary: #059669;
+            --theme-primary: #10b981;
             --theme-secondary: #34d399;
-            --theme-base: #020f07;
-            --background: #020f07;
-            --surface-1: #071a0e;
-            --surface-2: #0d2918;
+            --theme-base: #0a0e17;
+            --background: #0a0e17;
+            --surface-1: #0f1420;
+            --surface-2: #161d2e;
             --foreground: #f0fdf4;
             --text-2: #6ee7b7;
-            --border-default: rgba(5,150,105,0.15);
-            --border-strong: rgba(5,150,105,0.3);
+            --border-default: rgba(16,185,129,0.15);
+            --border-strong: rgba(16,185,129,0.3);
             --radius: 0.5rem;
             --radius-lg: 0.75rem;
           }
@@ -131,9 +130,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         `}} />
       </head>
       <body className="flex flex-col min-h-screen">
-        <div className="aurora aurora-primary" aria-hidden />
-        <div className="aurora aurora-secondary" aria-hidden />
-        <div className="aurora aurora-third" aria-hidden />
         <AnimatedBackground />
         <div className="grain" aria-hidden />
         <DesignEffects />
@@ -150,7 +146,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         {!isWidgetHidden(theme, 'cookieConsent') && <CookieConsent />}
         {!isWidgetHidden(theme, 'stickyFooterCTA') && <StickyFooterCTA />}
-        <FloatingChatWrapper />
         <Script defer data-domain="trackwealth.app" src="https://plausible.io/js/script.js" strategy="afterInteractive" />
         <Script defer data-site="trackwealth.app" src="http://31.97.56.148:3098/t.js" strategy="afterInteractive" />
         <FeedbackWidget siteName="TrackWealth" accentColor="#0ea5e9" position="left" />
