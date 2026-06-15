@@ -9,6 +9,7 @@ import ChatBot from '@/components/ChatBot'
 import FeedbackWidget from '@/components/FeedbackWidget'
 import { getSiteFlags } from '@/lib/flags'
 import BackToTop from '@/components/BackToTop'
+import FloatingChatWrapper from '@/components/FloatingChatWrapper'
 import type { BrandConfig } from '@/components/SharedNavbar'
 import CookieConsent from "../../components/CookieConsent"
 import StickyFooterCTA from "../../components/StickyFooterCTA"
@@ -149,6 +150,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Script defer data-domain="trackwealth.app" src="https://plausible.io/js/script.js" strategy="afterInteractive" />
         <Script defer data-site="trackwealth.app" src="http://31.97.56.148:3098/t.js" strategy="afterInteractive" />
         <FeedbackWidget siteName="TrackWealth" accentColor="#0ea5e9" position="left" />
+        <FloatingChatWrapper />
       </body>
     </html>
   )
