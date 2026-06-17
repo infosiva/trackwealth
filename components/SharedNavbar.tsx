@@ -29,8 +29,19 @@ export default function SharedNavbar({ brand }: { brand: BrandConfig }) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
-          <span className="text-2xl">{brand.icon}</span>
-          <span className="font-bold text-white text-[15px] tracking-tight">{brand.name}</span>
+          <div style={{
+            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+            background: 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <polyline points="2,11 6,7 9,9 14,4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <polyline points="11,4 14,4 14,7" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span className="font-bold text-white text-[15px] tracking-tight">
+            Track<span style={{ color: '#f59e0b' }}>Wealth</span>
+          </span>
         </Link>
 
         {/* Desktop nav */}
