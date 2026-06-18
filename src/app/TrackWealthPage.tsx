@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import WealthStats from '@/components/WealthStats'
+import LiveStatsBar from '@/components/LiveStatsBar'
 import { useGate } from '@/lib/shared/useGate'
 import RegisterGate from '@/lib/shared/RegisterGate'
 import GuidedTour, { type TourStep } from '@/components/GuidedTour'
@@ -399,11 +400,13 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
       })
       const data = await res.json()
       setResult(data)
+      fetch('/api/stats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event: 'portfolio_tracked' }) }).catch(() => {})
       if (data.total_value > 0) {
         const entry: HistoryEntry = { date: new Date().toISOString().split('T')[0], value: data.total_value, cost: data.total_cost }
         const newHistory = [...history.filter(h => h.date !== entry.date), entry].slice(-30)
         setHistory(newHistory)
         localStorage.setItem('wealthpilot-history', JSON.stringify(newHistory))
+        fetch('/api/stats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event: 'snapshot_created' }) }).catch(() => {})
       }
       if (data.holdings) {
         const updatedAlerts = alerts.map(a => {
@@ -517,6 +520,10 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                   </span>
                 ))}
               </div>
+
+              <p className="fade-up delay-300" style={{ fontSize: '0.6875rem', opacity: 0.5, marginTop: '0.5rem' }}>
+                Have a promo code? <a href="#portfolio-form" style={{ color: 'var(--accent,#f59e0b)', textDecoration: 'underline' }}>Enter it here</a>
+              </p>
             </div>
 
             {/* ── Right: Bloomberg terminal panel ── */}
@@ -633,6 +640,8 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
 
           </div>
         </section>
+
+        <LiveStatsBar />
 
         {/* ── Mobile demo strip (lg:hidden) ────────────────────────── */}
         <div className="tw-mobile-strip lg:hidden">
