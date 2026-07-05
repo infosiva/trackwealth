@@ -812,12 +812,12 @@ pre {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255,255,255,0.04);
+  background: rgba(16,185,129,0.15);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.09);
+  border: 1px solid rgba(16,185,129,0.30);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
-  color: rgba(167,243,208,0.80);
+  color: #a7f3d0;
   font-size: 0.69rem;
   font-weight: 700;
   letter-spacing: 0.11em;
@@ -1440,8 +1440,8 @@ pre {
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
 }
-.tw-badge-free { background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
-.tw-badge-pro { background: rgba(124,58,237,0.1); color: #a78bfa; border: 1px solid rgba(124,58,237,0.2); }
+.tw-badge-free { background: rgba(34,197,94,0.25); color: #bbf7d0; border: 1px solid rgba(34,197,94,0.40); }
+.tw-badge-pro { background: rgba(124,58,237,0.25); color: #ddd6fe; border: 1px solid rgba(124,58,237,0.40); }
 .tw-feature-title { font-size: 0.9rem; font-weight: 700; color: #f0fdf4; }
 .tw-feature-desc { font-size: 0.8rem; color: #6ee7b7; line-height: 1.5; opacity: 0.8; }
 

@@ -33,10 +33,10 @@ const CASH_TICKERS   = new Set(['USD','GBP','EUR','CASH','USDC','USDT','BUSD'])
 const PROPERTY_TICKERS = new Set(['VNQ','O','SPG','AMT','EQIX','PLD'])
 
 function assetType(ticker: string): { label: string; color: string; bg: string } {
-  if (CRYPTO_TICKERS.has(ticker)) return { label: 'Crypto', color: '#fb923c', bg: 'rgba(251,146,60,0.12)' }
-  if (CASH_TICKERS.has(ticker))   return { label: 'Cash',   color: '#4ade80', bg: 'rgba(74,222,128,0.12)' }
-  if (PROPERTY_TICKERS.has(ticker)) return { label: 'Property', color: '#c084fc', bg: 'rgba(192,132,252,0.12)' }
-  return { label: 'Stock', color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' }
+  if (CRYPTO_TICKERS.has(ticker)) return { label: 'Crypto', color: '#fed7aa', bg: 'rgba(251,146,60,0.28)' }
+  if (CASH_TICKERS.has(ticker))   return { label: 'Cash',   color: '#bbf7d0', bg: 'rgba(74,222,128,0.28)' }
+  if (PROPERTY_TICKERS.has(ticker)) return { label: 'Property', color: '#e9d5ff', bg: 'rgba(192,132,252,0.28)' }
+  return { label: 'Stock', color: '#bfdbfe', bg: 'rgba(96,165,250,0.28)' }
 }
 
 // ─── Animated Net-Worth Chart ─────────────────────────────────────────────────
