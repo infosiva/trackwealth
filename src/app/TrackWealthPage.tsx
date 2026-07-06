@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import WealthStats from '@/components/WealthStats'
 import LiveStatsBar from '@/components/LiveStatsBar'
 import { useGate } from '@/lib/shared/useGate'
@@ -40,27 +40,66 @@ function assetType(ticker: string): { label: string; color: string; bg: string }
 }
 
 // ─── Animated Net-Worth Chart ─────────────────────────────────────────────────
+type ChartRange = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'
+const RANGES: ChartRange[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL']
+
+interface ChartPoint { x: number; y: number; value: number; label: string }
+
+// Deterministic pseudo-random so series don't reshuffle on every render/tab-revisit
+function seededRandom(seed: number) {
+  const x = Math.sin(seed) * 10000
+  return x - Math.floor(x)
+}
+
+// Synthetic per-range series — no real portfolio history API exists server-side
+// (checked src/app/api/portfolio/route.ts + src/app/api/data/route.ts: portfolio
+// route only returns live current-price snapshots, data route is an unrelated
+// public-API proxy). Point count/volatility/trend vary per range for realism.
+function genSeries(range: ChartRange): ChartPoint[] {
+  const base = 124840
+  const cfg: Record<ChartRange, { points: number; vol: number; drift: number; fmt: (i: number) => string }> = {
+    '1D':  { points: 24, vol: 0.006, drift: 0.0015,  fmt: i => `${i}:00` },
+    '1W':  { points: 7,  vol: 0.012, drift: 0.004,   fmt: i => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i] },
+    '1M':  { points: 30, vol: 0.014, drift: 0.003,   fmt: i => `Day ${i + 1}` },
+    '3M':  { points: 13, vol: 0.02,  drift: 0.006,   fmt: i => `Wk ${i + 1}` },
+    '1Y':  { points: 12, vol: 0.03,  drift: 0.01,    fmt: i => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i] },
+    'ALL': { points: 18, vol: 0.035, drift: 0.014,   fmt: i => `M${i + 1}` },
+  }
+  const { points, vol, drift, fmt } = cfg[range]
+  const seedBase = range.charCodeAt(0) * 97 + range.length
+  let value = base * (1 - drift * points * 0.5)
+  const values: number[] = []
+  for (let i = 0; i < points; i++) {
+    const r = seededRandom(seedBase + i * 13.37) - 0.5
+    value = value * (1 + drift + r * vol)
+    values.push(value)
+  }
+  const min = Math.min(...values), max = Math.max(...values)
+  const span = max - min || 1
+  return values.map((v, i) => ({
+    x: (i / (points - 1)) * 540,
+    y: 92 - ((v - min) / span) * 84,
+    value: Math.round(v),
+    label: fmt(i),
+  }))
+}
+
 function NetWorthChart() {
   const canvasRef = useRef<SVGSVGElement>(null)
   const [progress, setProgress] = useState(0)
+  const [range, setRange] = useState<ChartRange>('1D')
+  const [flash, setFlash] = useState<'up' | 'down' | null>(null)
+  const [scrubIdx, setScrubIdx] = useState<number | null>(null)
+  const prevEndValue = useRef<number | null>(null)
 
-  const pts = [
-    { x: 0,   y: 88 },
-    { x: 60,  y: 75 },
-    { x: 120, y: 80 },
-    { x: 180, y: 62 },
-    { x: 240, y: 55 },
-    { x: 300, y: 42 },
-    { x: 360, y: 35 },
-    { x: 420, y: 28 },
-    { x: 480, y: 18 },
-    { x: 540, y: 10 },
-  ]
+  const series = useMemo(() => genSeries(range), [range])
+  const isUp = series.length > 1 ? series[series.length - 1].value >= series[0].value : true
 
   useEffect(() => {
     let frame: number
     let start: number | null = null
-    const duration = 2000
+    const duration = 1200
+    setProgress(0)
     const animate = (ts: number) => {
       if (!start) start = ts
       const p = Math.min((ts - start) / duration, 1)
@@ -69,13 +108,24 @@ function NetWorthChart() {
     }
     frame = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(frame)
-  }, [])
+  }, [range])
 
-  const visiblePts = pts.map((p, i) => {
-    const threshold = i / (pts.length - 1)
+  useEffect(() => {
+    const endValue = series[series.length - 1]?.value ?? null
+    if (prevEndValue.current !== null && endValue !== null && endValue !== prevEndValue.current) {
+      setFlash(endValue > prevEndValue.current ? 'up' : 'down')
+      const t = setTimeout(() => setFlash(null), 550)
+      prevEndValue.current = endValue
+      return () => clearTimeout(t)
+    }
+    prevEndValue.current = endValue
+  }, [series])
+
+  const visiblePts = series.map((p, i) => {
+    const threshold = i / (series.length - 1)
     if (progress < threshold) return null
     return p
-  }).filter(Boolean) as typeof pts
+  }).filter(Boolean) as ChartPoint[]
 
   const pathD = visiblePts.length > 1
     ? visiblePts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ')
@@ -85,35 +135,100 @@ function NetWorthChart() {
     ? `${pathD} L ${visiblePts[visiblePts.length - 1].x} 100 L 0 100 Z`
     : ''
 
+  const activeIdx = scrubIdx ?? series.length - 1
+  const activePt = series[activeIdx]
+
+  function handlePointer(e: React.PointerEvent<SVGSVGElement>) {
+    const svg = canvasRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    const relX = ((e.clientX - rect.left) / rect.width) * 540
+    let nearest = 0
+    let best = Infinity
+    series.forEach((p, i) => {
+      const d = Math.abs(p.x - relX)
+      if (d < best) { best = d; nearest = i }
+    })
+    setScrubIdx(nearest)
+  }
+
+  function endScrub() { setScrubIdx(null) }
+
+  const lineColor = isUp ? { from: '#16a34a', to: '#4ade80', fill: '#22c55e', dot: '#4ade80' }
+                         : { from: '#dc2626', to: '#f87171', fill: '#ef4444', dot: '#f87171' }
+
   return (
-    <svg ref={canvasRef} viewBox="0 0 540 100" className="w-full h-full" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#22c55e" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#22c55e" stopOpacity="0.02" />
-        </linearGradient>
-        <linearGradient id="chartLine" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#16a34a" />
-          <stop offset="100%" stopColor="#4ade80" />
-        </linearGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-      {areaD && <path d={areaD} fill="url(#chartFill)" />}
-      {pathD && <path d={pathD} fill="none" stroke="url(#chartLine)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" filter="url(#glow)" />}
-      {visiblePts.length > 0 && (
-        <circle
-          cx={visiblePts[visiblePts.length - 1].x}
-          cy={visiblePts[visiblePts.length - 1].y}
-          r="4"
-          fill="#4ade80"
-          filter="url(#glow)"
-          style={{ animation: 'pulseGreen 2s ease-in-out infinite' }}
-        />
-      )}
-    </svg>
+    <div style={{ position: 'relative', width: '100%' }}>
+      <div
+        className={flash === 'up' ? 'tw-chart-value tw-value-flash-up' : flash === 'down' ? 'tw-chart-value tw-value-flash-down' : 'tw-chart-value'}
+      >
+        ${activePt ? activePt.value.toLocaleString() : '—'}
+      </div>
+
+      <div className="tw-range-tabs">
+        {RANGES.map(r => (
+          <button
+            key={r}
+            onClick={() => setRange(r)}
+            className={`tw-range-tab ${range === r ? 'tw-range-tab-active' : ''}`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ position: 'relative', width: '100%', height: '80px', marginTop: '0.5rem' }}>
+        <svg
+          ref={canvasRef}
+          viewBox="0 0 540 100"
+          className="w-full h-full"
+          preserveAspectRatio="none"
+          onPointerMove={handlePointer}
+          onPointerDown={handlePointer}
+          onPointerUp={endScrub}
+          onPointerLeave={endScrub}
+          style={{ touchAction: 'none', cursor: 'crosshair' }}
+        >
+          <defs>
+            <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={lineColor.fill} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={lineColor.fill} stopOpacity="0.02" />
+            </linearGradient>
+            <linearGradient id="chartLine" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor={lineColor.from} />
+              <stop offset="100%" stopColor={lineColor.to} />
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          {areaD && <path d={areaD} fill="url(#chartFill)" />}
+          {pathD && <path d={pathD} fill="none" stroke="url(#chartLine)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" filter="url(#glow)" />}
+          {scrubIdx !== null && activePt && (
+            <line x1={activePt.x} y1="0" x2={activePt.x} y2="100" stroke="rgba(240,253,244,0.35)" strokeWidth="1" strokeDasharray="3,3" />
+          )}
+          {activePt && (
+            <circle
+              cx={activePt.x}
+              cy={activePt.y}
+              r="4"
+              fill={lineColor.dot}
+              filter="url(#glow)"
+              style={scrubIdx === null ? { animation: 'pulseGreen 2s ease-in-out infinite' } : undefined}
+            />
+          )}
+        </svg>
+        {scrubIdx !== null && activePt && (
+          <div
+            className="tw-chart-tooltip"
+            style={{ left: `${(activePt.x / 540) * 100}%`, top: `${(activePt.y / 100) * 80}px` }}
+          >
+            {activePt.label} · ${activePt.value.toLocaleString()}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
