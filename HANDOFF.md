@@ -40,8 +40,15 @@ User asked me to pick the next portfolio project for a "clone competitor UX, imp
 - `visual-qa.mjs`: 18 pass, 1 warn (no CTA above fold — pre-existing), 1 fail (mobile horizontal overflow on `.tw-terminal-*` hero classes). Confirmed via `git stash` + re-run against clean tree: identical failure exists on unmodified `main` — pre-existing hero-section bug, zero occurrences of `tw-terminal` in this task's diff. Out of scope, not fixed here.
 - Note: chart component only renders in the dashboard's empty-state (before user adds holdings) — this is correct scope per the existing app structure, not a regression.
 
-## E2E verify result (live trackwealth)
+## E2E verify result (live trackwealth.app)
 Vercel account: `team_2XHm064mWA86v38GDJ01Veli` (infosiva, existing linked project — not a new-project creation, so no relink needed).
+
+6/10 passed. 4 failures — all pre-existing, confirmed via `git diff HEAD~1 HEAD --stat` (only `TrackWealthPage.tsx`/`globals.css`/`HANDOFF.md` touched, zero overlap with any failing area):
+- P7: 375px overflow (same `.tw-terminal-*` hero overflow bug confirmed pre-existing on clean `main` via stash test before push)
+- P2/P3: broken `/privacy` `/terms` links (404 — pages don't exist, unrelated to chart)
+- P5: chatbot FAB missing (§Z5 gap, unrelated to chart)
+
+Not fixed — out of scope for this task. Flagging for a separate pass.
 
 ## Success criteria
 - Time-range tabs visibly switch chart data
