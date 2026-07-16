@@ -31,5 +31,11 @@
   },
   "optionalDependencies": {
     "@tailwindcss/oxide-darwin-arm64": "4.3.0"
+  },
+  "overrides": {
+    "@tremor/react": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }
