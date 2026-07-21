@@ -46,6 +46,69 @@ async function serverGetCount(product: string, action: string): Promise<number> 
   }
 }
 
+// --- Guest access codes (hub-issued, no-signup) ---
+export interface GuestPrivilege {
+  active: boolean
+  tier?: string
+  aiLimit?: number | null
+  expiresAt?: number
+}
+
+function guestPrivKey(product: string): string {
+  return `${product}_guest_priv`
+}
+
+export async function redeemGuestCode(product: string, code: string): Promise<{ ok: boolean; error?: string }> {
+  const fp = getFingerprint(product)
+  try {
+    const res = await fetch(`${getApiUrl()}/admin-code/redeem`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code.trim(), project: product, fingerprint: fp }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data.valid) return { ok: false, error: data.error ?? 'Invalid code' }
+    const priv: GuestPrivilege = { active: true, tier: data.tier, aiLimit: data.aiLimit, expiresAt: data.expiresAt }
+    localStorage.setItem(guestPrivKey(product), JSON.stringify(priv))
+    return { ok: true }
+  } catch {
+    return { ok: false, error: 'Network error — check connection' }
+  }
+}
+
+export function getCachedGuestPrivilege(product: string): GuestPrivilege {
+  if (typeof window === 'undefined') return { active: false }
+  try {
+    const raw = localStorage.getItem(guestPrivKey(product))
+    if (!raw) return { active: false }
+    const priv: GuestPrivilege = JSON.parse(raw)
+    if (!priv.expiresAt || priv.expiresAt < Date.now()) return { active: false }
+    return priv
+  } catch {
+    return { active: false }
+  }
+}
+
+export async function refreshGuestPrivilege(product: string): Promise<GuestPrivilege> {
+  const fp = getFingerprint(product)
+  try {
+    const res = await fetch(`${getApiUrl()}/admin-code/status?project=${product}&fingerprint=${fp}`)
+    const data = await res.json()
+    const priv: GuestPrivilege = data.active
+      ? { active: true, tier: data.tier, aiLimit: data.aiLimit, expiresAt: data.expiresAt }
+      : { active: false }
+    if (priv.active) localStorage.setItem(guestPrivKey(product), JSON.stringify(priv))
+    else localStorage.removeItem(guestPrivKey(product))
+    return priv
+  } catch {
+    return getCachedGuestPrivilege(product)
+  }
+}
+
+export function hasGuestAccess(product: string): boolean {
+  return getCachedGuestPrivilege(product).active
+}
+
 export function useGate(product: string, freeLimit: number, action = 'session') {
   const [count, setCount]               = useState(0)
   const [isRegistered, setIsRegistered] = useState(false)
@@ -55,7 +118,7 @@ export function useGate(product: string, freeLimit: number, action = 'session') 
   const countRef = useRef(0)
 
   useEffect(() => {
-    const registered = isLoggedIn()
+    const registered = isLoggedIn() || hasGuestAccess(product)
     setIsRegistered(registered)
     if (!registered) {
       serverGetCount(product, action).then(c => {
@@ -64,6 +127,10 @@ export function useGate(product: string, freeLimit: number, action = 'session') 
         // If they already hit the limit (e.g. returning visitor), show gate immediately
         if (c >= freeLimit) setShowGate(true)
         setReady(true)
+      })
+      // Also check server for a guest code redeemed on another device/session
+      refreshGuestPrivilege(product).then(priv => {
+        if (priv.active) { setIsRegistered(true); setShowGate(false) }
       })
     } else {
       setReady(true)
