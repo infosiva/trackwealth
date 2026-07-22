@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import MagicAuthModal from './MagicAuthModal'
 import type { AuthUser } from './useMagicAuth'
+import { redeemGuestCode } from './useGate'
 
 export interface GateFeature {
   icon: string
@@ -59,6 +60,23 @@ export default function RegisterGate({
 }: RegisterGateProps) {
   const [showAuth, setShowAuth] = useState(false)
   const [slide, setSlide] = useState(0)
+  const [showCodeInput, setShowCodeInput] = useState(false)
+  const [code, setCode] = useState('')
+  const [codeError, setCodeError] = useState('')
+  const [redeeming, setRedeeming] = useState(false)
+
+  async function handleRedeem() {
+    if (!code.trim()) return
+    setRedeeming(true)
+    setCodeError('')
+    const res = await redeemGuestCode(site, code.trim())
+    setRedeeming(false)
+    if (res.ok) {
+      onSuccess(null as unknown as AuthUser)
+    } else {
+      setCodeError(res.error ?? 'Invalid code')
+    }
+  }
 
   const features = lockedFeatures ?? DEFAULT_FEATURES[site] ?? []
 
@@ -206,6 +224,40 @@ export default function RegisterGate({
               }}>
                 Maybe later
               </button>
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: 4 }}>
+              {!showCodeInput ? (
+                <button onClick={() => setShowCodeInput(true)} style={{
+                  background: 'none', border: 'none', color: '#94a3b8',
+                  fontSize: 12, cursor: 'pointer', padding: '4px 8px', textDecoration: 'underline',
+                }}>
+                  Have an access code?
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <input
+                    value={code}
+                    onChange={e => { setCode(e.target.value); setCodeError('') }}
+                    placeholder="Enter code"
+                    style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }}
+                  />
+                  <button
+                    onClick={handleRedeem}
+                    disabled={redeeming || !code.trim()}
+                    style={{
+                      padding: '8px 14px', borderRadius: 8, border: 'none',
+                      background: accentColor, color: '#fff', fontSize: 13, fontWeight: 700,
+                      cursor: redeeming ? 'default' : 'pointer', opacity: redeeming ? 0.7 : 1,
+                    }}
+                  >
+                    {redeeming ? 'Redeeming…' : 'Redeem'}
+                  </button>
+                </div>
+              )}
+              {codeError && (
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: '#dc2626' }}>{codeError}</p>
+              )}
             </div>
 
             <p style={{ margin: '10px 0 0', textAlign: 'center', fontSize: 11, color: '#cbd5e1' }}>
