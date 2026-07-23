@@ -802,7 +802,7 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
             <h2 className="tw-section-title">Analyze your portfolio now</h2>
 
             {/* Monthly AI Insight + Trajectory strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }} className="tw-insight-strip">
+            <div style={{ marginBottom: '1.5rem' }} className="tw-insight-strip">
               <MonthlyInsightCard />
               <NetWorthTrajectory />
             </div>

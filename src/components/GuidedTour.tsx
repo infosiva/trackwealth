@@ -122,12 +122,12 @@ export default function GuidedTour({
       left = Math.min(Math.max(r.left + r.width / 2 - TOOLTIP_W / 2, 8), vw - TOOLTIP_W - 8)
     } else if (p === 'right') {
       top  = r.top + r.height / 2 - TOOLTIP_H / 2
-      left = r.right + PAD
+      left = Math.min(r.right + PAD, vw - TOOLTIP_W - 8)
     } else {
       top  = r.top + r.height / 2 - TOOLTIP_H / 2
       left = r.left - TOOLTIP_W - PAD
     }
-    setTooltipPos({ top: Math.max(8, top), left: Math.max(8, left) })
+    setTooltipPos({ top: Math.max(8, top), left: Math.min(Math.max(8, left), vw - TOOLTIP_W - 8) })
   }
 
   function advance() {

@@ -49,6 +49,7 @@ html {
 }
 
 body {
+  margin: 0;
   background: var(--theme-base, var(--background));
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -1243,6 +1244,10 @@ pre {
   gap: 0.4rem;
   padding: 0.65rem 0.75rem;
   border-bottom: 1px solid rgba(5,150,105,0.08);
+  flex-wrap: wrap;
+}
+.tw-alert-form .tw-input-mono {
+  min-width: 0;
 }
 .tw-alert-set-btn {
   padding: 0.35rem 0.7rem;
@@ -1620,11 +1625,26 @@ pre {
 
 /* ── Insight strip responsive ── */
 .tw-insight-strip {
+  display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.tw-insight-strip > * {
+  min-width: 0;
 }
 @media (max-width: 640px) {
   .tw-insight-strip {
     grid-template-columns: 1fr;
+  }
+  .tw-portfolio-input-wrap {
+    flex-wrap: wrap;
+  }
+  .tw-portfolio-input {
+    flex-basis: 100%;
+  }
+  .tw-terminal-cta {
+    flex: 1;
+    justify-content: center;
   }
 }
 
@@ -1757,6 +1777,7 @@ pre {
 }
 .tw-portfolio-input {
   flex: 1;
+  min-width: 0;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(212,168,83,0.2);
   border-right: none;
