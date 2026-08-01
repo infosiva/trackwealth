@@ -1,4 +1,5 @@
 import { get } from "@vercel/edge-config";
+import { unstable_cache } from "next/cache";
 
 export interface SiteWidgets {
   chatbot?: boolean;
@@ -45,7 +46,11 @@ export interface SiteTheme {
  */
 export async function loadSiteTheme(siteId: string): Promise<SiteTheme | null> {
   try {
-    const theme = await get<SiteTheme>(`theme_${siteId}`);
+    const theme = await unstable_cache(
+      () => get<SiteTheme>(`theme_${siteId}`),
+      ["site-theme", siteId],
+      { revalidate: 600 },
+    )();
     return theme ?? null;
   } catch {
     return null;
