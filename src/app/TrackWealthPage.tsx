@@ -5,6 +5,7 @@ import LiveStatsBar from '@/components/LiveStatsBar'
 import { useGate } from '@/lib/shared/useGate'
 import RegisterGate from '@/lib/shared/RegisterGate'
 import GuidedTour, { type TourStep } from '@/components/GuidedTour'
+import PromoBar from '@/components/PromoBar'
 import { siteConfig } from '@/site.config'
 
 // ─── Tour ────────────────────────────────────────────────────────────────────
@@ -636,9 +637,9 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                 ))}
               </div>
 
-              <p className="fade-up delay-300" style={{ fontSize: '0.6875rem', opacity: 0.5, marginTop: '0.5rem' }}>
-                Have a promo code? <a href="#portfolio-form" style={{ color: 'var(--accent,#f59e0b)', textDecoration: 'underline' }}>Enter it here</a>
-              </p>
+              <div className="fade-up delay-300">
+                <PromoBar />
+              </div>
             </div>
 
             {/* ── Right: Bloomberg terminal panel ── */}
