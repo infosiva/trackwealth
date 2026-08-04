@@ -15,11 +15,13 @@ import CookieConsent from "../../components/CookieConsent"
 import StickyFooterCTA from "../../components/StickyFooterCTA"
 import { siteConfig } from '@/site.config'
 import { loadSiteTheme, buildThemeStyleTag, isWidgetHidden } from '@/lib/theme-loader'
+import TrackWealthLogo from '@/components/TrackWealthLogo'
 
 const brand: BrandConfig = {
   name: siteConfig.name,
   tagline: siteConfig.description,
-  icon: siteConfig.icon,
+  icon: <TrackWealthLogo size={22} />,
+  nameAccent: 'Wealth',
   color: siteConfig.accentColor,
   url: siteConfig.url,
   navLinks: [

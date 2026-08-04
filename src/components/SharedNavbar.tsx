@@ -1,11 +1,13 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
 
 export interface NavLink { label: string; href: string; external?: boolean }
 export interface BrandConfig {
-  name: string; tagline: string; icon: string; color: string; url: string
+  name: string; tagline: string; icon: ReactNode; color: string; url: string
   navLinks?: NavLink[]; cta?: { label: string; href: string }
+  /** Optional pre-split wordmark: accentWord is rendered in brand.color, rest in default. Falls back to plain brand.name. */
+  nameAccent?: string
 }
 
 export default function SharedNavbar({ brand }: { brand: BrandConfig }) {
@@ -41,13 +43,25 @@ export default function SharedNavbar({ brand }: { brand: BrandConfig }) {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group select-none">
             <span
-              className="text-lg leading-none transition-transform duration-200 group-hover:scale-110"
+              className="leading-none transition-transform duration-200 group-hover:scale-110 flex items-center justify-center"
               aria-hidden
             >
               {brand.icon}
             </span>
             <span className="font-semibold text-white/90 text-sm tracking-tight">
-              {brand.name}
+              {brand.nameAccent
+                ? (() => {
+                    const idx = brand.name.indexOf(brand.nameAccent)
+                    if (idx === -1) return brand.name
+                    return (
+                      <>
+                        {brand.name.slice(0, idx)}
+                        <span style={{ color: brand.color }}>{brand.nameAccent}</span>
+                        {brand.name.slice(idx + brand.nameAccent.length)}
+                      </>
+                    )
+                  })()
+                : brand.name}
             </span>
           </Link>
 
