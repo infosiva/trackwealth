@@ -373,8 +373,8 @@ function NetWorthTrajectory() {
         </span>
         <span style={{
           fontSize: '0.6875rem', fontWeight: 700, padding: '0.125rem 0.5rem',
-          borderRadius: '9999px', background: trend ? 'rgba(34,197,94,0.12)' : 'rgba(248,113,113,0.12)',
-          color: trend ? '#4ade80' : '#f87171',
+          borderRadius: '9999px', background: trend ? '#047857' : '#b91c1c',
+          color: '#ffffff',
         }}>
           {trend ? '▲ Trending up' : '▼ Trending down'}
         </span>
@@ -649,12 +649,12 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                 {/* Header bar */}
                 <div className="tw-terminal-header">
                   <div className="tw-terminal-brand">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d4a853" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
                       <polyline points="16 7 22 7 22 13" />
                     </svg>
-                    WealthPilot
-                    <span style={{ color: 'rgba(212,168,83,0.35)', fontWeight: 400 }}>•</span>
+                    TrackWealth
+                    <span style={{ color: 'rgba(5,150,105,0.35)', fontWeight: 400 }}>•</span>
                     <span style={{ color: 'rgba(209,213,219,0.45)', fontWeight: 400 }}>TERMINAL</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -708,8 +708,8 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                   >
                     <defs>
                       <linearGradient id="sparkGold" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#d4a853" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#d4a853" stopOpacity="0.01" />
+                        <stop offset="0%" stopColor="#059669" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#059669" stopOpacity="0.01" />
                       </linearGradient>
                       <filter id="sparkGlow">
                         <feGaussianBlur stdDeviation="1.5" result="blur" />
@@ -727,14 +727,14 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                       className="tw-sparkline-path"
                       d="M0,45 L40,42 L80,38 L120,34 L160,30 L200,24 L240,20 L280,16 L320,11 L360,8 L400,4"
                       fill="none"
-                      stroke="#d4a853"
+                      stroke="#059669"
                       strokeWidth="1.8"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       filter="url(#sparkGlow)"
                     />
                     {/* Live dot */}
-                    <circle cx="400" cy="4" r="3" fill="#d4a853" filter="url(#sparkGlow)" style={{ animation: 'livePulse 2s ease-in-out infinite' }} />
+                    <circle cx="400" cy="4" r="3" fill="#059669" filter="url(#sparkGlow)" style={{ animation: 'livePulse 2s ease-in-out infinite' }} />
                   </svg>
                 </div>
 

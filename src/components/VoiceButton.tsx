@@ -24,7 +24,7 @@ declare global {
   }
 }
 
-export default function VoiceButton({ onTranscript, lang = 'en-GB', color = '#f59e0b', position = 'bottom-right' }: Props) {
+export default function VoiceButton({ onTranscript, lang = 'en-GB', color = '#059669', position = 'bottom-right' }: Props) {
   const [state, setState] = useState<State>('idle')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null)

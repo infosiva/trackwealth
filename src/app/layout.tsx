@@ -148,7 +148,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {!isWidgetHidden(theme, 'cookieConsent') && <CookieConsent />}
         {!isWidgetHidden(theme, 'stickyFooterCTA') && <StickyFooterCTA />}
         <Script defer data-domain="trackwealth.app" src="https://plausible.io/js/script.js" strategy="afterInteractive" />
-        <FeedbackWidget siteName="TrackWealth" accentColor="#0ea5e9" position="left" />
+        <FeedbackWidget siteName="TrackWealth" accentColor="#059669" position="left" />
         <FloatingChatWrapper />
       </body>
     </html>

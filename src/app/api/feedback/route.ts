@@ -8,6 +8,6 @@ export async function POST(req: NextRequest) {
   const entry = {id:crypto.randomUUID(),site:site??'TrackWealth',type:type??'General',rating,message:message.trim(),email:email?.trim()||null,page:page??'/',createdAt:new Date().toISOString()}
   console.log('[feedback]',JSON.stringify(entry))
   const tok=process.env.TELEGRAM_BOT_TOKEN,cid=process.env.TELEGRAM_CHAT_ID
-  if(tok&&cid){await fetch(`https://api.telegram.org/bot${tok}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:cid,text:`📣 Feedback — ${entry.site}\n${"⭐".repeat(rating)} ${rating}/5\n\n${entry.message}`,parse_mode:'Markdown'})}).catch(()=>{})}
+  if(tok&&cid&&process.env.TELEGRAM_NOTIFICATIONS_DISABLED!=='true'){await fetch(`https://api.telegram.org/bot${tok}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:cid,text:`📣 Feedback — ${entry.site}\n${"⭐".repeat(rating)} ${rating}/5\n\n${entry.message}`,parse_mode:'Markdown'})}).catch(()=>{})}
   return NextResponse.json({ok:true,id:entry.id})
 }

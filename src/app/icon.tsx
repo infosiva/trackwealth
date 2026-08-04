@@ -6,7 +6,7 @@ export default function Icon() {
   return new ImageResponse(
     <div style={{
       width: 32, height: 32, borderRadius: 8,
-      background: 'linear-gradient(135deg, #b45309, #f59e0b)',
+      background: 'linear-gradient(135deg, #047857, #059669)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       {/* Ascending bar chart — wealth/growth */}
