@@ -479,11 +479,6 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
       setIsPro(true)
       window.history.replaceState({}, '', '/')
     }
-    fetch('http://31.97.56.148:3099/api/stats', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site: 'trackwealth.app', path: window.location.pathname, userAgent: navigator.userAgent, timestamp: new Date().toISOString() }),
-    }).catch(() => {/* ignore */})
   }, [])
 
   const handleUpgrade = useCallback(async () => {
