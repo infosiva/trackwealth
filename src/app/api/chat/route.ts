@@ -28,19 +28,23 @@ export async function POST(req: NextRequest) {
     const groqKey = process.env.GROQ_API_KEY
     if (!groqKey) return NextResponse.json({ error: 'AI not configured' }, { status: 503 })
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        max_tokens: 300,
-        temperature: 0.5,
-        stream: true,
-      }),
-    })
+    let res: Response | null = null
+    for (const model of ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b']) {
+      const attempt = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'system', content: systemPrompt }, ...messages],
+          max_tokens: 400,
+          temperature: 0.5,
+          stream: true,
+        }),
+      })
+      if (attempt.ok && attempt.body) { res = attempt; break }
+    }
 
-    if (!res.ok || !res.body) return NextResponse.json({ error: 'AI request failed' }, { status: 502 })
+    if (!res || !res.body) return NextResponse.json({ error: 'AI request failed' }, { status: 502 })
 
     void reportToTaskFlow({ project: 'trackwealth', agentName: 'ChatBot', status: 'completed', message: 'Chat message processed' })
     const readable = new ReadableStream({

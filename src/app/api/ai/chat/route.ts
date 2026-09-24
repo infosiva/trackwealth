@@ -66,8 +66,8 @@ export async function POST(req: NextRequest) {
 
   const attempts: Array<() => Promise<string | undefined>> = []
   if (groqKey) {
-    attempts.push(() => callGroq('llama-3.3-70b-versatile', trimmed, groqKey))
-    attempts.push(() => callGroq('llama-3.1-8b-instant', trimmed, groqKey))
+    attempts.push(() => callGroq('qwen/qwen3.8-27b', trimmed, groqKey))
+    attempts.push(() => callGroq('openai/gpt-oss-20b', trimmed, groqKey))
   }
   if (geminiKey) attempts.push(() => callGemini(trimmed, geminiKey))
   if (cerebrasKey) attempts.push(() => callCerebras(trimmed, cerebrasKey))
