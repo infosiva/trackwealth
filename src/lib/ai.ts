@@ -51,18 +51,18 @@ const DEFAULTS: Record<string, { tiers: Record<Quality, string[]>; baseUrl: stri
     baseUrl: 'https://api.groq.com/openai/v1',
     keyEnv: 'GROQ',
     tiers: {
-      fast:     ['llama-3.1-8b-instant', 'gemma2-9b-it'],
-      balanced: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
-      best:     ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
+      fast:     ['qwen/qwen3.8-27b', 'gemma2-9b-it'],
+      balanced: ['openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
+      best:     ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
     },
   },
   gemini: {
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     keyEnv: 'GEMINI',
     tiers: {
-      fast:     ['gemini-2.0-flash-lite'],
-      balanced: ['gemini-2.0-flash', 'gemini-2.0-flash-lite'],
-      best:     ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'],
+      fast:     ['gemini-2.5-flash-lite'],
+      balanced: ['gemini-2.5-flash-lite', 'gemini-2.5-flash-lite'],
+      best:     ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite'],
     },
   },
   cerebras: {
