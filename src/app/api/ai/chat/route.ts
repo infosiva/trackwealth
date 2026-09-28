@@ -28,7 +28,7 @@ async function callGemini(messages: ChatMessage[], key: string) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash-lite',
       messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
       max_tokens: 300,
     }),
