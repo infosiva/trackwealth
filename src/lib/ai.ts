@@ -51,7 +51,7 @@ const DEFAULTS: Record<string, { tiers: Record<Quality, string[]>; baseUrl: stri
     baseUrl: 'https://api.groq.com/openai/v1',
     keyEnv: 'GROQ',
     tiers: {
-      fast:     ['qwen/qwen3.8-27b', 'gemma2-9b-it'],
+      fast:     ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b'],
       balanced: ['openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
       best:     ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
     },
