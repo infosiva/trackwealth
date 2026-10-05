@@ -17,6 +17,7 @@ import { siteConfig } from '@/site.config'
 import { loadSiteTheme, buildThemeStyleTag, isWidgetHidden } from '@/lib/theme-loader'
 import TrackWealthLogo from '@/components/TrackWealthLogo'
 
+import { MotionProvider } from "@infosiva/shared-ui/modern";
 const brand: BrandConfig = {
   name: siteConfig.name,
   tagline: siteConfig.description,
@@ -137,7 +138,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="grain" aria-hidden />
         <DesignEffects />
         <SharedNavbar brand={brand} />
-        <main className="flex-1 pt-16">{children}</main>
+        <main className="flex-1 pt-16"><MotionProvider>{children}</MotionProvider></main>
         <Footer siteName={siteConfig.name} />
         {flags.chatbot && !isWidgetHidden(theme, 'chatbot') && <ChatBot />}
         {!isWidgetHidden(theme, 'backToTop') && <BackToTop accentColor="#059669" />}

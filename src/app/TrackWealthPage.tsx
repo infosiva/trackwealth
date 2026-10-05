@@ -7,6 +7,7 @@ import RegisterGate from '@/lib/shared/RegisterGate'
 import GuidedTour, { type TourStep } from '@/components/GuidedTour'
 import PromoBar from '@/components/PromoBar'
 import { siteConfig } from '@/site.config'
+import { MagneticButton } from '@infosiva/shared-ui/modern'
 
 // ─── Tour ────────────────────────────────────────────────────────────────────
 const TOUR: TourStep[] = [
@@ -610,12 +611,12 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                   readOnly
                   aria-label="Portfolio tickers example"
                 />
-                <a href="#portfolio-form" className="tw-terminal-cta">
+                <MagneticButton className="tw-terminal-cta" onClick={() => document.getElementById('portfolio-form')?.scrollIntoView({ behavior: 'smooth' })}>
                   Analyse My Portfolio
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
-                </a>
+                </MagneticButton>
               </div>
 
               {/* Trust pills */}
