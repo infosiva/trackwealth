@@ -4,7 +4,7 @@ export const siteConfig = {
   tagline: "Stop tracking. Start deciding.",
   description: "AI that connects your accounts, spots the patterns, and tells you your next wealth move — not just what happened.",
   url: "https://trackwealth.app",
-  primaryColor: "#059669",
+  primaryColor: "#0b6e4f",
   accentColor: "#22c55e",
   secondaryColor: "#34d399",
   icon: "📈",
@@ -21,7 +21,6 @@ export const siteConfig = {
     links: [
       { label: "Home", href: "/" },
       { label: "Portfolio", href: "/#portfolio-form" },
-      { label: "Alerts", href: "/#portfolio-form" },
       { label: "Pricing", href: "/#pricing" },
       { label: "About", href: "/about" },
     ],

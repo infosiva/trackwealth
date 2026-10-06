@@ -1,19 +1,11 @@
 'use client'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import WealthStats from '@/components/WealthStats'
-import LiveStatsBar from '@/components/LiveStatsBar'
 import { useGate } from '@/lib/shared/useGate'
 import RegisterGate from '@/lib/shared/RegisterGate'
-import GuidedTour, { type TourStep } from '@/components/GuidedTour'
-import PromoBar from '@/components/PromoBar'
+import Hero from '@/components/Hero'
 import { siteConfig } from '@/site.config'
-import { MagneticButton } from '@infosiva/shared-ui/modern'
 
-// ─── Tour ────────────────────────────────────────────────────────────────────
-const TOUR: TourStep[] = [
-  { target: '#portfolio-form', title: 'Track your portfolio', icon: '📊', body: 'Add holdings — live prices show your real-time P&L instantly.', placement: 'bottom' },
-  { target: '#pricing', title: 'Unlock unlimited analyses', icon: '💹', body: 'Pro removes daily limits — run AI checks any time.', placement: 'top' },
-]
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Holding { ticker: string; shares: string; buyPrice: string }
@@ -24,9 +16,9 @@ interface Alert { ticker: string; targetPrice: number; direction: 'above' | 'bel
 
 // ─── Colour map ──────────────────────────────────────────────────────────────
 const COLORS: Record<string, string> = {
-  AAPL:'#22c55e', MSFT:'#4ade80', GOOGL:'#86efac', AMZN:'#16a34a',
+  AAPL:'#34d399', MSFT:'#4ade80', GOOGL:'#86efac', AMZN:'#16a34a',
   TSLA:'#f87171', META:'#6ee7b7', NVDA:'#34d399', NFLX:'#a7f3d0',
-  JPM:'#bbf7d0', default: '#22c55e',
+  JPM:'#bbf7d0', default: '#34d399',
 }
 
 // ─── Asset type pill ─────────────────────────────────────────────────────────
@@ -39,199 +31,6 @@ function assetType(ticker: string): { label: string; color: string; bg: string }
   if (CASH_TICKERS.has(ticker))   return { label: 'Cash',   color: '#bbf7d0', bg: 'rgba(74,222,128,0.28)' }
   if (PROPERTY_TICKERS.has(ticker)) return { label: 'Property', color: '#e9d5ff', bg: 'rgba(192,132,252,0.28)' }
   return { label: 'Stock', color: '#bfdbfe', bg: 'rgba(96,165,250,0.28)' }
-}
-
-// ─── Animated Net-Worth Chart ─────────────────────────────────────────────────
-type ChartRange = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'
-const RANGES: ChartRange[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL']
-
-interface ChartPoint { x: number; y: number; value: number; label: string }
-
-// Deterministic pseudo-random so series don't reshuffle on every render/tab-revisit
-function seededRandom(seed: number) {
-  const x = Math.sin(seed) * 10000
-  return x - Math.floor(x)
-}
-
-// Synthetic per-range series — no real portfolio history API exists server-side
-// (checked src/app/api/portfolio/route.ts + src/app/api/data/route.ts: portfolio
-// route only returns live current-price snapshots, data route is an unrelated
-// public-API proxy). Point count/volatility/trend vary per range for realism.
-function genSeries(range: ChartRange): ChartPoint[] {
-  const base = 124840
-  const cfg: Record<ChartRange, { points: number; vol: number; drift: number; fmt: (i: number) => string }> = {
-    '1D':  { points: 24, vol: 0.006, drift: 0.0015,  fmt: i => `${i}:00` },
-    '1W':  { points: 7,  vol: 0.012, drift: 0.004,   fmt: i => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i] },
-    '1M':  { points: 30, vol: 0.014, drift: 0.003,   fmt: i => `Day ${i + 1}` },
-    '3M':  { points: 13, vol: 0.02,  drift: 0.006,   fmt: i => `Wk ${i + 1}` },
-    '1Y':  { points: 12, vol: 0.03,  drift: 0.01,    fmt: i => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i] },
-    'ALL': { points: 18, vol: 0.035, drift: 0.014,   fmt: i => `M${i + 1}` },
-  }
-  const { points, vol, drift, fmt } = cfg[range]
-  const seedBase = range.charCodeAt(0) * 97 + range.length
-  let value = base * (1 - drift * points * 0.5)
-  const values: number[] = []
-  for (let i = 0; i < points; i++) {
-    const r = seededRandom(seedBase + i * 13.37) - 0.5
-    value = value * (1 + drift + r * vol)
-    values.push(value)
-  }
-  const min = Math.min(...values), max = Math.max(...values)
-  const span = max - min || 1
-  return values.map((v, i) => ({
-    x: (i / (points - 1)) * 540,
-    y: 92 - ((v - min) / span) * 84,
-    value: Math.round(v),
-    label: fmt(i),
-  }))
-}
-
-function NetWorthChart() {
-  const canvasRef = useRef<SVGSVGElement>(null)
-  const [progress, setProgress] = useState(0)
-  const [range, setRange] = useState<ChartRange>('1D')
-  const [flash, setFlash] = useState<'up' | 'down' | null>(null)
-  const [scrubIdx, setScrubIdx] = useState<number | null>(null)
-  const prevEndValue = useRef<number | null>(null)
-
-  const series = useMemo(() => genSeries(range), [range])
-  const isUp = series.length > 1 ? series[series.length - 1].value >= series[0].value : true
-
-  useEffect(() => {
-    let frame: number
-    let start: number | null = null
-    const duration = 1200
-    setProgress(0)
-    const animate = (ts: number) => {
-      if (!start) start = ts
-      const p = Math.min((ts - start) / duration, 1)
-      setProgress(p)
-      if (p < 1) frame = requestAnimationFrame(animate)
-    }
-    frame = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(frame)
-  }, [range])
-
-  useEffect(() => {
-    const endValue = series[series.length - 1]?.value ?? null
-    if (prevEndValue.current !== null && endValue !== null && endValue !== prevEndValue.current) {
-      setFlash(endValue > prevEndValue.current ? 'up' : 'down')
-      const t = setTimeout(() => setFlash(null), 550)
-      prevEndValue.current = endValue
-      return () => clearTimeout(t)
-    }
-    prevEndValue.current = endValue
-  }, [series])
-
-  const visiblePts = series.map((p, i) => {
-    const threshold = i / (series.length - 1)
-    if (progress < threshold) return null
-    return p
-  }).filter(Boolean) as ChartPoint[]
-
-  const pathD = visiblePts.length > 1
-    ? visiblePts.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ')
-    : ''
-
-  const areaD = visiblePts.length > 1
-    ? `${pathD} L ${visiblePts[visiblePts.length - 1].x} 100 L 0 100 Z`
-    : ''
-
-  const activeIdx = scrubIdx ?? series.length - 1
-  const activePt = series[activeIdx]
-
-  function handlePointer(e: React.PointerEvent<SVGSVGElement>) {
-    const svg = canvasRef.current
-    if (!svg) return
-    const rect = svg.getBoundingClientRect()
-    const relX = ((e.clientX - rect.left) / rect.width) * 540
-    let nearest = 0
-    let best = Infinity
-    series.forEach((p, i) => {
-      const d = Math.abs(p.x - relX)
-      if (d < best) { best = d; nearest = i }
-    })
-    setScrubIdx(nearest)
-  }
-
-  function endScrub() { setScrubIdx(null) }
-
-  const lineColor = isUp ? { from: '#16a34a', to: '#4ade80', fill: '#22c55e', dot: '#4ade80' }
-                         : { from: '#dc2626', to: '#f87171', fill: '#ef4444', dot: '#f87171' }
-
-  return (
-    <div style={{ position: 'relative', width: '100%' }}>
-      <div
-        className={flash === 'up' ? 'tw-chart-value tw-value-flash-up' : flash === 'down' ? 'tw-chart-value tw-value-flash-down' : 'tw-chart-value'}
-      >
-        ${activePt ? activePt.value.toLocaleString() : '—'}
-      </div>
-
-      <div className="tw-range-tabs">
-        {RANGES.map(r => (
-          <button
-            key={r}
-            onClick={() => setRange(r)}
-            className={`tw-range-tab ${range === r ? 'tw-range-tab-active' : ''}`}
-          >
-            {r}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ position: 'relative', width: '100%', height: '80px', marginTop: '0.5rem' }}>
-        <svg
-          ref={canvasRef}
-          viewBox="0 0 540 100"
-          className="w-full h-full"
-          preserveAspectRatio="none"
-          onPointerMove={handlePointer}
-          onPointerDown={handlePointer}
-          onPointerUp={endScrub}
-          onPointerLeave={endScrub}
-          style={{ touchAction: 'none', cursor: 'crosshair' }}
-        >
-          <defs>
-            <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={lineColor.fill} stopOpacity="0.25" />
-              <stop offset="100%" stopColor={lineColor.fill} stopOpacity="0.02" />
-            </linearGradient>
-            <linearGradient id="chartLine" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={lineColor.from} />
-              <stop offset="100%" stopColor={lineColor.to} />
-            </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-            </filter>
-          </defs>
-          {areaD && <path d={areaD} fill="url(#chartFill)" />}
-          {pathD && <path d={pathD} fill="none" stroke="url(#chartLine)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" filter="url(#glow)" />}
-          {scrubIdx !== null && activePt && (
-            <line x1={activePt.x} y1="0" x2={activePt.x} y2="100" stroke="rgba(240,253,244,0.35)" strokeWidth="1" strokeDasharray="3,3" />
-          )}
-          {activePt && (
-            <circle
-              cx={activePt.x}
-              cy={activePt.y}
-              r="4"
-              fill={lineColor.dot}
-              filter="url(#glow)"
-              style={scrubIdx === null ? { animation: 'pulseGreen 2s ease-in-out infinite' } : undefined}
-            />
-          )}
-        </svg>
-        {scrubIdx !== null && activePt && (
-          <div
-            className="tw-chart-tooltip"
-            style={{ left: `${(activePt.x / 540) * 100}%`, top: `${(activePt.y / 100) * 80}px` }}
-          >
-            {activePt.label} · ${activePt.value.toLocaleString()}
-          </div>
-        )}
-      </div>
-    </div>
-  )
 }
 
 // ─── Health Score Meter ───────────────────────────────────────────────────────
@@ -251,7 +50,7 @@ function HealthMeter({ score }: { score: number }) {
   }, [score])
 
   const pct = (displayed / 100) * 100
-  const color = score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444'
+  const color = score >= 75 ? '#34d399' : score >= 50 ? '#f59e0b' : '#ef4444'
   const label = score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : 'Needs Work'
 
   return (
@@ -287,136 +86,6 @@ function InsightCard({ icon, text, highlight }: { icon: string; text: string; hi
   )
 }
 
-// ─── Monthly AI Insight Card ─────────────────────────────────────────────────
-const MONTHLY_INSIGHTS = [
-  "Your savings rate is 18% — increasing to 20% adds £240/year to your emergency fund.",
-  "Markets are up 3.2% this month. Your growth allocation could be reviewed.",
-  "You've tracked 3 consecutive months. Time to review your investment allocation.",
-]
-
-function MonthlyInsightCard() {
-  const [dismissed, setDismissed] = useState(false)
-
-  useEffect(() => {
-    try {
-      if (localStorage.getItem('tw_insight_dismissed') === '1') setDismissed(true)
-    } catch { /* ignore */ }
-  }, [])
-
-  if (dismissed) return null
-
-  const monthIndex = new Date().getMonth() % MONTHLY_INSIGHTS.length
-  const insight = MONTHLY_INSIGHTS[monthIndex]
-
-  function dismiss() {
-    setDismissed(true)
-    try { localStorage.setItem('tw_insight_dismissed', '1') } catch { /* ignore */ }
-  }
-
-  return (
-    <div style={{
-      borderLeft: '3px solid #22c55e',
-      background: 'rgba(2,15,7,0.85)',
-      borderRadius: '0.625rem',
-      padding: '0.875rem 1rem',
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '0.75rem',
-      position: 'relative',
-      border: '1px solid rgba(34,197,94,0.15)',
-      borderLeftColor: '#22c55e',
-      borderLeftWidth: '3px',
-    }}>
-      <span style={{ fontSize: '1.25rem', flexShrink: 0, lineHeight: 1 }}>💡</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
-          This month&apos;s AI insight
-        </div>
-        <p style={{ fontSize: '0.8125rem', color: '#a7f3d0', lineHeight: 1.5, margin: 0 }}>{insight}</p>
-      </div>
-      <button
-        onClick={dismiss}
-        aria-label="Dismiss insight"
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: '#064e3b', fontSize: '0.875rem', lineHeight: 1,
-          padding: '0.125rem', flexShrink: 0, transition: 'color 0.15s',
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171' }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#064e3b' }}
-      >✕</button>
-    </div>
-  )
-}
-
-// ─── Net Worth Trajectory Visual ─────────────────────────────────────────────
-const TRAJECTORY_BARS = [
-  { label: 'M-4', height: 40 },
-  { label: 'M-3', height: 52 },
-  { label: 'M-2', height: 61 },
-  { label: 'M-1', height: 75 },
-  { label: 'Now', height: 90 },
-]
-
-function NetWorthTrajectory() {
-  const trend = TRAJECTORY_BARS[TRAJECTORY_BARS.length - 1].height > TRAJECTORY_BARS[0].height
-
-  return (
-    <div style={{
-      background: 'rgba(2,15,7,0.7)',
-      border: '1px solid rgba(5,150,105,0.12)',
-      borderRadius: '0.75rem',
-      padding: '1rem 1.25rem',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.875rem' }}>
-        <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Net Worth Trajectory
-        </span>
-        <span style={{
-          fontSize: '0.6875rem', fontWeight: 700, padding: '0.125rem 0.5rem',
-          borderRadius: '9999px', background: trend ? '#047857' : '#b91c1c',
-          color: '#ffffff',
-        }}>
-          {trend ? '▲ Trending up' : '▼ Trending down'}
-        </span>
-      </div>
-
-      {/* Bars */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', height: '4.5rem' }}>
-        {TRAJECTORY_BARS.map((bar, i) => (
-          <div key={bar.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', height: '100%', justifyContent: 'flex-end' }}>
-            <div
-              style={{
-                width: '100%',
-                height: `${bar.height}%`,
-                background: i === TRAJECTORY_BARS.length - 1
-                  ? 'linear-gradient(180deg, #4ade80 0%, #16a34a 100%)'
-                  : 'rgba(34,197,94,0.25)',
-                borderRadius: '3px 3px 0 0',
-                transition: 'height 0.6s cubic-bezier(0.23,1,0.32,1)',
-                boxShadow: i === TRAJECTORY_BARS.length - 1 ? '0 0 8px rgba(74,222,128,0.35)' : 'none',
-              }}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* Month labels */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.375rem' }}>
-        {TRAJECTORY_BARS.map(bar => (
-          <div key={bar.label} style={{ flex: 1, textAlign: 'center', fontSize: '0.625rem', color: '#064e3b', fontFamily: 'JetBrains Mono, monospace' }}>
-            {bar.label}
-          </div>
-        ))}
-      </div>
-
-      {/* CTA */}
-      <p style={{ fontSize: '0.6875rem', color: '#064e3b', marginTop: '0.625rem', textAlign: 'center' }}>
-        Connect your accounts to see real data
-      </p>
-    </div>
-  )
-}
 
 // ─── Mini Sparkline ───────────────────────────────────────────────────────────
 function MiniSparkline({ history }: { history: HistoryEntry[] }) {
@@ -429,7 +98,7 @@ function MiniSparkline({ history }: { history: HistoryEntry[] }) {
   const up = vals[vals.length - 1] >= vals[0]
   return (
     <svg width={w} height={h}>
-      <polyline points={pts.join(' ')} fill="none" stroke={up ? '#22c55e' : '#f87171'} strokeWidth="1.5" strokeLinejoin="round" />
+      <polyline points={pts.join(' ')} fill="none" stroke={up ? '#34d399' : '#f87171'} strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -448,7 +117,7 @@ function AllocationBar({ holdings, total }: { holdings: Result[]; total: number 
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function TrackWealthPage({ showPricing = false }: { showPricing?: boolean }) {
+export default function TrackWealthPage(_props: { showPricing?: boolean }) {
   const { count: gateCount, showGate, increment: gateIncrement, onRegistered, dismissGate, isRegistered } = useGate('wealthpilot', 5)
   const remaining = Math.max(0, 3 - gateCount)
   const [isPro, setIsPro] = useState(false)
@@ -557,252 +226,13 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
 
       <main className="min-h-screen relative z-10">
 
-        {/* ── Ticker tape ──────────────────────────────────────────── */}
-        <div className="tw-ticker-wrap" aria-hidden="true">
-          <div className="tw-ticker">
-            {[
-              ['AAPL', '+1.2%', true], ['MSFT', '+0.8%', true], ['GOOGL', '-0.3%', false],
-              ['AMZN', '+2.1%', true], ['TSLA', '-1.5%', false], ['NVDA', '+3.4%', true],
-              ['META', '+0.6%', true], ['JPM', '-0.2%', false], ['NFLX', '+1.8%', true],
-              ['BTC', '+3.1%', true], ['ETH', '+2.2%', true], ['GOLD', '+0.4%', true],
-              ['AAPL', '+1.2%', true], ['MSFT', '+0.8%', true], ['GOOGL', '-0.3%', false],
-              ['AMZN', '+2.1%', true], ['TSLA', '-1.5%', false], ['NVDA', '+3.4%', true],
-            ].map(([t, v, up], i) => (
-              <span key={i} className="tw-tick-item">
-                <span className="tw-tick-symbol">{t}</span>
-                <span className={up ? 'tw-tick-up' : 'tw-tick-down'}>{v as string}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-
         {/* ── Bloomberg Terminal Hero ───────────────────────────────── */}
-        <section className="tw-terminal-hero">
-          <div className="tw-terminal-hero-inner">
-
-            {/* ── Left: copy + portfolio input ── */}
-            <div className="tw-terminal-left">
-
-              {/* Live badge */}
-              <div className="tw-live-badge fade-up">
-                <span className="tw-live-dot" />
-                LIVE MARKET DATA · AI-POWERED · FREE TO START
-              </div>
-
-              {/* Headline */}
-              <h1 className="tw-terminal-headline fade-up delay-75">
-                Your portfolio.
-                <span className="tw-terminal-headline-gold">
-                  Institutional-grade intelligence.
-                </span>
-              </h1>
-
-              {/* Subtext */}
-              <p className="tw-terminal-sub fade-up delay-150">
-                Enter any stock portfolio — get live P&amp;L, AI risk analysis, rebalancing advice,
-                and price alerts in seconds. What hedge funds charge $10K/yr for, now $12/mo.
-              </p>
-
-              {/* Portfolio input + CTA (inline row) */}
-              <div className="tw-portfolio-input-wrap fade-up delay-200">
-                <input
-                  className="tw-portfolio-input"
-                  placeholder="AAPL 50, MSFT 30, NVDA 20..."
-                  readOnly
-                  aria-label="Portfolio tickers example"
-                />
-                <MagneticButton className="tw-terminal-cta" onClick={() => document.getElementById('portfolio-form')?.scrollIntoView({ behavior: 'smooth' })}>
-                  Analyse My Portfolio
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </MagneticButton>
-              </div>
-
-              {/* Trust pills */}
-              <div className="tw-terminal-trust fade-up delay-300">
-                {[
-                  'No brokerage login needed',
-                  'Yahoo Finance + Claude AI',
-                  '3 free analyses daily',
-                ].map(pill => (
-                  <span key={pill} className="tw-terminal-trust-pill">
-                    <span className="tw-terminal-trust-check">✓</span>
-                    {pill}
-                  </span>
-                ))}
-              </div>
-
-              <div className="fade-up delay-300">
-                <PromoBar />
-              </div>
-            </div>
-
-            {/* ── Right: Bloomberg terminal panel ── */}
-            <div className="tw-hero-right scale-in delay-200">
-              <div className="tw-terminal-panel">
-
-                {/* Header bar */}
-                <div className="tw-terminal-header">
-                  <div className="tw-terminal-brand">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                      <polyline points="16 7 22 7 22 13" />
-                    </svg>
-                    TrackWealth
-                    <span style={{ color: 'rgba(5,150,105,0.35)', fontWeight: 400 }}>•</span>
-                    <span style={{ color: 'rgba(209,213,219,0.45)', fontWeight: 400 }}>TERMINAL</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div className="tw-terminal-live-pill">
-                      <span className="tw-terminal-live-pill-dot" />
-                      LIVE
-                    </div>
-                    <div className="tw-terminal-tab">AI Insights</div>
-                  </div>
-                </div>
-
-                {/* 2×2 metric grid */}
-                <div className="tw-metric-grid">
-                  {/* Portfolio value */}
-                  <div className="tw-metric-card">
-                    <div className="tw-metric-label">Portfolio</div>
-                    <div className="tw-metric-value">$124,840</div>
-                    <div className="tw-metric-sub tw-metric-green">+$1,247 today  ↑1.2%</div>
-                  </div>
-                  {/* Best performer */}
-                  <div className="tw-metric-card">
-                    <div className="tw-metric-label">Best Performer</div>
-                    <div className="tw-metric-value tw-metric-green">NVDA</div>
-                    <div className="tw-metric-sub tw-metric-green">+18.4% this month</div>
-                  </div>
-                  {/* Risk score */}
-                  <div className="tw-metric-card">
-                    <div className="tw-metric-label">Risk Score</div>
-                    <div className="tw-metric-value tw-metric-gold">Low</div>
-                    <div className="tw-metric-sub tw-metric-gold">23 / 100</div>
-                  </div>
-                  {/* Rebalance */}
-                  <div className="tw-metric-card">
-                    <div className="tw-metric-label">Rebalance</div>
-                    <div className="tw-metric-value tw-metric-amber">2</div>
-                    <div className="tw-metric-sub tw-metric-amber">suggestions pending</div>
-                  </div>
-                </div>
-
-                {/* Sparkline chart */}
-                <div className="tw-sparkline-wrap">
-                  <div className="tw-sparkline-header">
-                    <span className="tw-sparkline-label">Portfolio value — 30D</span>
-                    <span className="tw-sparkline-delta">▲ +12.3%</span>
-                  </div>
-                  <svg
-                    className="tw-sparkline-svg"
-                    viewBox="0 0 400 52"
-                    preserveAspectRatio="none"
-                    aria-hidden="true"
-                  >
-                    <defs>
-                      <linearGradient id="sparkGold" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#059669" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#059669" stopOpacity="0.01" />
-                      </linearGradient>
-                      <filter id="sparkGlow">
-                        <feGaussianBlur stdDeviation="1.5" result="blur" />
-                        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                      </filter>
-                    </defs>
-                    {/* Area fill */}
-                    <path
-                      className="tw-sparkline-area"
-                      d="M0,45 L40,42 L80,38 L120,34 L160,30 L200,24 L240,20 L280,16 L320,11 L360,8 L400,4 L400,52 L0,52 Z"
-                      fill="url(#sparkGold)"
-                    />
-                    {/* Line */}
-                    <path
-                      className="tw-sparkline-path"
-                      d="M0,45 L40,42 L80,38 L120,34 L160,30 L200,24 L240,20 L280,16 L320,11 L360,8 L400,4"
-                      fill="none"
-                      stroke="#059669"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      filter="url(#sparkGlow)"
-                    />
-                    {/* Live dot */}
-                    <circle cx="400" cy="4" r="3" fill="#059669" filter="url(#sparkGlow)" style={{ animation: 'livePulse 2s ease-in-out infinite' }} />
-                  </svg>
-                </div>
-
-                {/* Footer */}
-                <div className="tw-terminal-footer">
-                  <span className="tw-terminal-sync">
-                    <span className="tw-terminal-sync-dot" />
-                    Last synced 2 min ago
-                  </span>
-                  <div className="tw-terminal-corner-dots">
-                    <span className="tw-terminal-corner-dot" style={{ background: '#ef4444', opacity: 0.6 }} />
-                    <span className="tw-terminal-corner-dot" style={{ background: '#f59e0b', opacity: 0.6 }} />
-                    <span className="tw-terminal-corner-dot" style={{ background: '#10b981', opacity: 0.6 }} />
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        <LiveStatsBar />
-
-        {/* ── Mobile demo strip (lg:hidden) ────────────────────────── */}
-        <div className="tw-mobile-strip lg:hidden">
-          {[
-            { label: 'Net Worth', value: '$142,830', delta: '+6.3%', up: true },
-            { label: 'Monthly Gain', value: '+$8,420', delta: 'this month', up: true },
-            { label: 'Health Score', value: '78 / 100', delta: 'Excellent', up: true },
-            { label: 'AI Alerts', value: '3 active', delta: 'new insight', up: null },
-          ].map(c => (
-            <div key={c.label} className="tw-mobile-card">
-              <div className="tw-mobile-card-label">{c.label}</div>
-              <div className="tw-mobile-card-value">{c.value}</div>
-              <div className={`tw-mobile-card-delta ${c.up === null ? 'tw-delta-neutral' : c.up ? 'tw-delta-up' : 'tw-delta-down'}`}>{c.delta}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── How it works (steps) ─────────────────────────────────── */}
-        <section className="tw-steps-section">
-          <div className="tw-steps-inner">
-            <div className="tw-section-eyebrow">How it works</div>
-            <div className="tw-steps-row">
-              {[
-                { n: '01', title: 'Add your holdings', desc: 'Enter stock tickers, crypto, or funds. No brokerage connection needed.' },
-                { n: '02', title: 'AI fetches live prices', desc: 'Real-time data from Yahoo Finance. See P&L update instantly.' },
-                { n: '03', title: 'Get AI insights', desc: 'Spot patterns, risk concentration, and rebalancing opportunities.' },
-                { n: '04', title: 'Set smart alerts', desc: 'Price targets and AI-triggered notifications keep you ahead.' },
-              ].map(s => (
-                <div key={s.n} className="tw-step reveal stagger-1">
-                  <div className="tw-step-num">{s.n}</div>
-                  <h3 className="tw-step-title">{s.title}</h3>
-                  <p className="tw-step-desc">{s.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <Hero onPick={(q) => { setQuestion(q); document.getElementById('portfolio-form')?.scrollIntoView({ behavior: 'smooth' }) }} />
 
         {/* ── Main App ─────────────────────────────────────────────── */}
         <section id="portfolio-form" className="tw-app-section">
           <div className="tw-app-inner">
-            <div className="tw-section-eyebrow">Portfolio tracker</div>
-            <h2 className="tw-section-title">Analyze your portfolio now</h2>
-
-            {/* Monthly AI Insight + Trajectory strip */}
-            <div style={{ marginBottom: '1.5rem' }} className="tw-insight-strip">
-              <MonthlyInsightCard />
-              <NetWorthTrajectory />
-            </div>
+            <h2 className="tw-section-eyebrow">Analyze your portfolio</h2>
 
             {/* Dashboard stats strip */}
             <WealthStats />
@@ -865,13 +295,13 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                 </button>
 
                 {/* Alerts panel */}
-                <div className="tw-alerts-panel">
-                  <div className="tw-panel-head">
+                <details className="tw-alerts-panel">
+                  <summary className="tw-panel-head tw-summary">
                     <span className="tw-panel-title">Price Alerts</span>
                     {triggeredAlerts.length > 0 && (
                       <span className="tw-alert-badge">⚡ {triggeredAlerts.length} triggered</span>
                     )}
-                  </div>
+                  </summary>
                   <div className="tw-alert-form">
                     <input value={alertTicker} onChange={e => setAlertTicker(e.target.value.toUpperCase())}
                       placeholder="AAPL" className="tw-input-mono uppercase w-16 flex-shrink-0" />
@@ -898,7 +328,7 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                       ))}
                     </div>
                   )}
-                </div>
+                </details>
               </div>
 
               {/* Results panel */}
@@ -1058,9 +488,6 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
                 ) : (
                   /* Empty state */
                   <div className="tw-empty-state">
-                    <div className="tw-empty-chart">
-                      <NetWorthChart />
-                    </div>
                     <div className="tw-empty-copy">
                       <div className="tw-empty-title">Your wealth snapshot appears here</div>
                       <div className="tw-empty-sub">Add your first holding on the left to see live P&L and AI insights</div>
@@ -1085,121 +512,18 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
           </div>
         </section>
 
-        {/* ── Why TrackWealth ──────────────────────────────────────── */}
-        <section className="tw-features-section">
-          <div className="tw-features-inner">
-            <div className="tw-section-eyebrow">Features</div>
-            <h2 className="tw-section-title">Wealth intelligence, not just charts</h2>
-
-            <div className="tw-features-grid">
-              {[
-                { icon: '🧠', title: 'AI That Thinks Like a CFO', desc: 'Spots concentration risk, correlation issues, and rebalancing signals — not just bar charts.', badge: 'Pro' },
-                { icon: '⚡', title: 'Real-time P&L', desc: 'Live prices from Yahoo Finance. Know your exact net worth at any moment.', badge: 'Free' },
-                { icon: '🎯', title: 'Smart Price Alerts', desc: 'Set targets and get notified when your thesis plays out.', badge: 'Free' },
-                { icon: '📊', title: 'Financial Health Score', desc: 'A single number that tells you how diversified, profitable and risk-aware you are.', badge: 'Pro' },
-                { icon: '🔒', title: 'No brokerage access', desc: 'You enter tickers manually. Nothing touches your accounts. Bank-grade private.', badge: 'Always' },
-                { icon: '💬', title: 'Natural language AI', desc: "Ask 'Am I overexposed to tech?' and get a straight answer, not a marketing blob.", badge: 'Pro' },
-              ].map(f => (
-                <div key={f.title} className="tw-feature-card glass-liquid card-hover reveal">
-                  <div className="tw-feature-head">
-                    <span className="tw-feature-icon">{f.icon}</span>
-                    <span className={`tw-feature-badge ${f.badge === 'Free' || f.badge === 'Always' ? 'tw-badge-free' : 'tw-badge-pro'}`}>{f.badge}</span>
-                  </div>
-                  <h3 className="tw-feature-title">{f.title}</h3>
-                  <p className="tw-feature-desc">{f.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Pricing ───────────────────────────────────────────────── */}
-        {showPricing && (<section id="pricing" className="tw-pricing-section">
-          <div className="tw-pricing-inner">
-            <div className="tw-section-eyebrow">Pricing</div>
-            <h2 className="tw-section-title">Simple, transparent pricing</h2>
-            <p className="tw-pricing-sub">One better trade decision per month covers the cost 10×</p>
-
-            {isPro && (
-              <div className="tw-pro-active-banner">⚡ Pro active — unlimited analyses</div>
-            )}
-
-            <div className="tw-pricing-grid">
-              {[
-                {
-                  name: 'Free', price: '$0', period: 'forever', highlight: false,
-                  features: ['3 analyses per day', 'Live price data', 'AI portfolio insights', 'Price alerts', 'Portfolio history (30 days)', 'Allocation charts'],
-                  cta: 'Get started free', onClick: undefined, disabled: false,
-                },
-                {
-                  name: 'Pro', price: '$12', period: '/ month', highlight: true,
-                  features: ['Unlimited analyses', 'Email price alerts', 'Export to CSV / PDF', 'Multi-portfolio support', 'AI rebalancing signals', 'Priority support'],
-                  cta: isPro ? 'Current plan' : (checkoutLoading ? 'Redirecting...' : 'Upgrade to Pro'),
-                  onClick: !isPro ? handleUpgrade : undefined,
-                  disabled: isPro || checkoutLoading,
-                },
-              ].map(plan => (
-                <div key={plan.name} className={`tw-plan-card glass-liquid ${plan.highlight ? 'tw-plan-highlight' : ''}`}>
-                  {plan.highlight && <div className="tw-plan-popular">Most popular</div>}
-                  <div className="tw-plan-name">{plan.name}</div>
-                  <div className="tw-plan-price">
-                    <span className="tw-plan-amount">{plan.price}</span>
-                    <span className="tw-plan-period">{plan.period}</span>
-                  </div>
-                  <ul className="tw-plan-features">
-                    {plan.features.map(f => (
-                      <li key={f} className="tw-plan-feature">
-                        <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <button onClick={plan.onClick} disabled={plan.disabled}
-                    className={`tw-plan-cta btn-press ${plan.highlight ? 'tw-plan-cta-primary' : 'tw-plan-cta-secondary'}`}>
-                    {plan.cta}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>)}
-
-        {/* ── Comparison table ─────────────────────────────────────── */}
-        <section className="tw-compare-section">
-          <div className="tw-compare-inner">
-            <div className="tw-section-eyebrow">Comparison</div>
-            <h2 className="tw-section-title">TrackWealth vs alternatives</h2>
-            <div className="tw-compare-table-wrap">
-              <table className="tw-compare-table">
-                <thead>
-                  <tr>
-                    {['Feature', 'TrackWealth', 'Copilot Money', 'Robinhood', 'Yahoo Finance'].map((h, i) => (
-                      <th key={h} className={i === 1 ? 'tw-compare-th-accent' : 'tw-compare-th'}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ['AI portfolio analysis', '✅ Advanced', '⚠️ Basic', '❌', '❌'],
-                    ['Real-time prices', '✅ Free', '✅ Connected', '✅ Free', '✅ Free'],
-                    ['No account required', '✅', '❌ Requires login', '❌ Login', '✅'],
-                    ['Financial health score', '✅ Animated', '❌', '❌', '❌'],
-                    ['Rebalancing signals', '✅ AI', '⚠️ Manual', '❌', '❌'],
-                    ['Privacy (no brokerage link)', '✅ Manual entry', '❌ Bank sync', '❌ Full access', '✅'],
-                    ['Cost', 'Free / $12 mo', '$95/yr', 'Free', 'Free'],
-                  ].map(row => (
-                    <tr key={row[0]} className="tw-compare-row">
-                      {row.map((cell, i) => (
-                        <td key={i} className={i === 1 ? 'tw-compare-td-accent' : 'tw-compare-td'}>{cell}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* ── Pricing: one slim row ─────────────────────────────────── */}
+        <section id="pricing" className="tw-price-row" aria-label="Pricing">
+          {isPro ? (
+            <div className="tw-pro-active-banner">⚡ Pro active — unlimited analyses</div>
+          ) : (
+            <>
+              <p className="tw-price-text"><b>Free</b> $0: 3 analyses a day, live prices, AI insights, alerts. <b>Pro</b> $12/mo: unlimited analyses.</p>
+              <button onClick={handleUpgrade} disabled={checkoutLoading} className="tw-plan-cta tw-plan-cta-primary btn-press tw-price-btn">
+                {checkoutLoading ? 'Redirecting...' : 'Upgrade to Pro'}
+              </button>
+            </>
+          )}
         </section>
 
       </main>
@@ -1208,11 +532,10 @@ export default function TrackWealthPage({ showPricing = false }: { showPricing?:
         <RegisterGate
           freeUsed={gateCount} freeLimit={5} freeFeature="analyses"
           lockedFeature="unlimited portfolio analyses"
-          accentColor="#22c55e" site="wealthpilot"
+          accentColor="#34d399" site="wealthpilot"
           onSuccess={onRegistered} onDismiss={dismissGate}
         />
       )}
-      <GuidedTour steps={TOUR} storageKey="wealthpilot_tour_v2" accentColor="#22c55e" />
-    </>
+          </>
   )
 }

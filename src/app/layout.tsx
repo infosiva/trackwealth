@@ -5,7 +5,6 @@ import SharedNavbar from '@/components/SharedNavbar'
 import Footer from '../../components/Footer'
 import DesignEffects from '@/components/DesignEffects'
 import AnimatedBackground from '@/components/AnimatedBackground'
-import ChatBot from '@/components/ChatBot'
 import FeedbackWidget from '@/components/FeedbackWidget'
 import { getSiteFlags } from '@/lib/flags'
 import BackToTop from '@/components/BackToTop'
@@ -28,7 +27,6 @@ const brand: BrandConfig = {
   navLinks: [
     { label: 'Home', href: '/' },
     { label: 'Portfolio', href: '/#portfolio-form' },
-    { label: 'Alerts', href: '/#portfolio-form' },
     { label: 'Pricing', href: '/#pricing' },
     { label: 'About', href: '/about' },
   ],
@@ -91,8 +89,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   ])
 
   const themeCSS = buildThemeStyleTag(theme, {
-    background: '#0a0e17',
-    primary: '#10b981',
+    background: '#07130f',
+    primary: '#0b6e4f',
     secondary: '#34d399',
   })
 
@@ -107,16 +105,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <style dangerouslySetInnerHTML={{ __html: `
           :root {
-            --theme-primary: #10b981;
+            --theme-primary: #0b6e4f;
             --theme-secondary: #34d399;
-            --theme-base: #0a0e17;
-            --background: #0a0e17;
-            --surface-1: #0f1420;
-            --surface-2: #161d2e;
+            --theme-base: #07130f;
+            --background: #07130f;
+            --surface-1: #0b1c15;
+            --surface-2: #11271e;
             --foreground: #f0fdf4;
             --text-2: #6ee7b7;
-            --border-default: rgba(16,185,129,0.15);
-            --border-strong: rgba(16,185,129,0.3);
+            --border-default: rgba(52,211,153,0.16);
+            --border-strong: rgba(52,211,153,0.32);
             --radius: 0.5rem;
             --radius-lg: 0.75rem;
           }
@@ -140,8 +138,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SharedNavbar brand={brand} />
         <main className="flex-1 pt-16"><MotionProvider>{children}</MotionProvider></main>
         <Footer siteName={siteConfig.name} />
-        {flags.chatbot && !isWidgetHidden(theme, 'chatbot') && <ChatBot />}
-        {!isWidgetHidden(theme, 'backToTop') && <BackToTop accentColor="#059669" />}
+        {!isWidgetHidden(theme, 'backToTop') && <BackToTop accentColor="#0b6e4f" />}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4237294630161176"
@@ -151,7 +148,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {!isWidgetHidden(theme, 'cookieConsent') && <CookieConsent />}
         {!isWidgetHidden(theme, 'stickyFooterCTA') && <StickyFooterCTA />}
         <Script defer data-domain="trackwealth.app" src="https://plausible.io/js/script.js" strategy="afterInteractive" />
-        <FeedbackWidget siteName="TrackWealth" accentColor="#059669" position="left" />
+        <FeedbackWidget siteName="TrackWealth" accentColor="#0b6e4f" position="left" />
         <FloatingChatWrapper />
       </body>
     </html>

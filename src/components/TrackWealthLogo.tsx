@@ -28,8 +28,8 @@ export default function TrackWealthLogo({ size = 22 }: { size?: number }) {
       <circle className="tw-logo-dot" cx="19" cy="6.5" r="1.6" fill="#fff" />
       <defs>
         <linearGradient id="tw-logo-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#047857" />
-          <stop offset="1" stopColor="#059669" />
+          <stop offset="0" stopColor="#0b6e4f" />
+          <stop offset="1" stopColor="#0b6e4f" />
         </linearGradient>
       </defs>
       <style>{`
