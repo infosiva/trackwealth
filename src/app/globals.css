@@ -2086,3 +2086,19 @@ pre {
 .tw-price-text { margin: 0; font-size: .85rem; color: var(--label-dim); flex: 1 1 18rem; }
 .tw-price-text b { color: #f0fdf4; }
 .tw-price-btn { width: auto; min-height: 44px; padding: 0 1.25rem; }
+
+/* item 21: drifting aurora + result bars */
+.tw-hero::before, .tw-hero::after { content: ''; position: absolute; z-index: -1; width: 46rem; height: 46rem; border-radius: 50%; filter: blur(90px); opacity: .35; pointer-events: none; }
+.tw-hero::before { top: -14rem; left: -10rem; background: radial-gradient(circle, #10b981, transparent 65%); animation: tw-drift 18s ease-in-out infinite alternate; }
+.tw-hero::after { bottom: -16rem; right: -12rem; background: radial-gradient(circle, #3b82f6, transparent 65%); animation: tw-drift 22s ease-in-out infinite alternate-reverse; }
+@keyframes tw-drift { to { transform: translate3d(5rem, 3rem, 0) scale(1.1); } }
+.tw-hero-bars { display: grid; gap: .35rem; margin: .4rem 0 .2rem; }
+.tw-hero-bars i { display: block; height: 8px; width: 0; border-radius: 99px; background: linear-gradient(90deg, #34d399, #3b82f6); transition: width .7s cubic-bezier(.23,1,.32,1); }
+.tw-hero-bars.on i { width: var(--w); }
+.tw-hero-bars span { font-size: .7rem; color: #9fc9b8; }
+.tw-hero-cta { position: relative; overflow: hidden; }
+@media (hover: hover) and (pointer: fine) { .tw-hero-cta:hover { transform: translateY(-1px); } }
+@media (prefers-reduced-motion: reduce) {
+  .tw-hero::before, .tw-hero::after { animation: none; }
+  .tw-hero-bars i { transition: none; }
+}

@@ -61,9 +61,10 @@ export default function Hero({ onPick }: { onPick: (q: string) => void }) {
             {!still && <span className="tw-hero-caret" aria-hidden="true" />}
           </button>
           <p key={i} className={`tw-hero-a${done || still ? ' on' : ''}`}>{s.a}</p>
-          <svg className="tw-hero-spark" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M0,32 C40,30 60,20 100,22 S160,8 200,14 S270,26 310,12 S370,6 400,4" />
-          </svg>
+          <div key={`b${i}`} className={`tw-hero-bars${done || still ? ' on' : ''}`} aria-hidden="true">
+            <i style={{ '--w': '82%' } as React.CSSProperties} /><i style={{ '--w': '56%' } as React.CSSProperties} /><i style={{ '--w': '34%' } as React.CSSProperties} />
+            <span>Illustrative output</span>
+          </div>
           <div className="tw-hero-chips" role="list">
             {SAMPLES.map((x, k) => (
               <button key={x.q} role="listitem" type="button" className={`tw-hero-chip${k === i ? ' active' : ''}`}

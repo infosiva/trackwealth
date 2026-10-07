@@ -53,3 +53,6 @@ TODO (run from the parent session, where the hook can see the skill calls, or fi
 - [ ] globals.css: aurora layers on .tw-hero::before/::after (transform drift), hover-only CTA shine, Emil curve cubic-bezier(.23,1,.32,1), reduced-motion block for .tw-hero*
 - [ ] re-shoot 375/1280, read both, impeccable audit
 SKILL-STACK: not done
+
+## Item 21 pass 2 (parent session, hook-unblocked)
+Hero.tsx: sparkline replaced by 3 result bars labelled "Illustrative output". globals.css: drifting aurora on .tw-hero::before/::after, ease-out-quint bars, reduced-motion block. TODO: re-shoot 375/1280, impeccable audit, ui-ux-pro-max search.py not run. SKILL-STACK: not done
