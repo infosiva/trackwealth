@@ -1,3 +1,4 @@
+import { sanitizeUserInput } from '@/lib/guard'
 import { reportToTaskFlow } from '@/lib/reportToTaskFlow'
 import { NextRequest, NextResponse } from 'next/server'
 import { AI_LIMITER } from '@/lib/rateLimit'
@@ -18,6 +19,8 @@ export async function POST(req: NextRequest) {
   const limited = AI_LIMITER.check(req); if (limited) return limited
   try {
     const body = await req.json()
+    if (body && Array.isArray(body.messages)) for (const m of body.messages) if (m && typeof m.content === 'string') m.content = sanitizeUserInput(m.content).text
+    if (body && typeof body.message === 'string') body.message = sanitizeUserInput(body.message).text
     const messages: Message[] = body.messages
     const systemPrompt: string = body.systemPrompt ?? DEFAULT_SYSTEM
 
