@@ -32,4 +32,24 @@ Done. Files changed: src/components/Hero.tsx (new compact one-viewport hero, rot
 ## ANIMATED SCOPE (gate items 19/21, derived from code 2026-10-07)
 - Moves: AnimatedBackground (ambient hero/background); CSS keyframes: badgeFloat, blink, borderSpin, fadeIn, fadeSlideUp, fadeUp, flashDown, flashUp; transitions on interactive elements.
 - Trigger: page load (ambient) and hover/press (interactive). Reduced motion: honoured via prefers-reduced-motion block.
-- STATUS: scope documented from existing code only. Skill-stack passes (ui-ux-pro-max, emil-design-eng, impeccable critique, review-animations) and 375/1280 screenshot review are NOT yet run for this app. Item 21 stays OPEN until they are.
+- STATUS (superseded by ITEM 21 section below): scope documented from existing code only. Skill-stack passes (ui-ux-pro-max, emil-design-eng, impeccable critique, review-animations) and 375/1280 screenshot review are NOT yet run for this app. Item 21 stays OPEN until they are.
+
+## ITEM 21 VISUAL PASS (2026-10-07) - plan before code
+Design read: fintech portfolio-analysis landing for self-directed investors, trust-first premium dark-emerald language (dials 5/5/4), existing finance-terminal archetype + locked emerald accent kept (no palette change).
+Gap found in baseline screenshots: backdrop reads flat near-black (no visible aurora); demo only types text (no visual result).
+- [ ] Aurora: 2 blurred radial emerald/teal layers drifting behind hero (.tw-hero::before/::after)
+- [ ] Demo result: 3 allocation bars that fill when the answer shows (labelled illustrative, no invented numbers)
+- [ ] Hero motion on Emil curve; CTA shine only on hover (pointer:fine); press scale(.97)
+- [ ] 375 + 1280 screenshots read; tsc check; impeccable audit
+ANIMATED SCOPE (item 21):
+- Moves: aurora layers (transform drift, 18-26s, ambient); demo typewriter + answer fade + bars scaleX fill (explanation of how the product answers); hero copy entry stagger 0/80/160ms (first visit); CTA/chip/question press scale(.97) 100-160ms (feedback).
+- Why: explanation + feedback only; nothing animates numbers the user acts on.
+- Trigger: page load (ambient/entry), answer change (bars), :active (press); hover shine gated by (hover:hover) and (pointer:fine).
+- Reduced motion: aurora static, typewriter static (existing), bars shown full, no entry/shine/press transforms.
+
+STATUS: BLOCKED, no UI code changed. Baseline 375/1280 screenshots were taken and read (no horizontal scroll, CTA 48px, above fold). Edits to Hero.tsx / globals.css were refused by ~/.claude/hooks/require-design-skills.sh ("invoke frontend-design impeccable via the Skill tool") even though both were invoked as Skill tool calls inside this subagent; the hook greps the transcript_path it is given (the parent transcript has 0 matches, the subagent transcript has them). Not bypassed.
+TODO (run from the parent session, where the hook can see the skill calls, or fix the hook to read the subagent transcript):
+- [ ] Hero.tsx: add .tw-hero-bars illustrative result bars (3 bars, scaleX fill on answer, "Illustrative output" label) replacing the sparkline
+- [ ] globals.css: aurora layers on .tw-hero::before/::after (transform drift), hover-only CTA shine, Emil curve cubic-bezier(.23,1,.32,1), reduced-motion block for .tw-hero*
+- [ ] re-shoot 375/1280, read both, impeccable audit
+SKILL-STACK: not done
