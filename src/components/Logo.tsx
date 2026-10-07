@@ -4,7 +4,7 @@
  * TrackWealth logo mark — ascending bar/line glyph that draws itself in on mount
  * (stroke-dashoffset animation), matching the app/icon.tsx favicon shape+accent.
  */
-export default function TrackWealthLogo({ size = 22 }: { size?: number }) {
+export function Logo({ size = 22 }: { size?: number }) {
   return (
     <svg
       width={size}

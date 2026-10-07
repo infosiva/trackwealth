@@ -15,3 +15,6 @@
 
 ## Resume from here if interrupted
 Done. Files changed: src/components/Hero.tsx (new compact one-viewport hero, rotating 6 sample questions typewriter, chips clickable, reduced-motion static), src/app/TrackWealthPage.tsx (hero/steps/features/tour removed, Hero wired), src/app/globals.css (.tw-hero*), icon.svg + apple-icon.tsx added, icon.tsx removed, about/contact pages exist. Verified: tsc clean, build ok, scrollHeight 1280x800=2414/800, 375x812=3020/812 (hero fits fold; tool+pricing below), scrollWidth==innerWidth.
+
+## ai-core status (2026-10-07)
+- Not on ai-core yet (exemption, stated honestly): AI calls use the local free-first chain in `src/lib/ai.ts` / `src/app/api/chat`. No document upload, RAG, memory or per-tenant budgets in this app today, so no ai-core feature applies. If any of those are added, extend/consume ai-core (`agents/ai-core`) instead of a local copy.
