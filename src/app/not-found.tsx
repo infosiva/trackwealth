@@ -37,6 +37,9 @@ export default function NotFound() {
         href="/"
         style={{
           marginTop: 8,
+          display: 'inline-flex',
+          alignItems: 'center',
+          minHeight: 44,
           padding: '12px 28px',
           borderRadius: 12,
           background: 'rgba(16,185,129,0.15)',
