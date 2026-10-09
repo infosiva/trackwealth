@@ -130,6 +130,8 @@ export function getCopy(theme: SiteTheme | null, key: keyof SiteCopy, fallback: 
 
 const GA4_RE = /^G-[A-Z0-9]{6,12}$/;
 export const isValidGa4Id = (id?: string) => !!id && GA4_RE.test(id);
+/** Hub value wins; NEXT_PUBLIC_GA4_ID is the fallback while the hub has no theme for this site. */
+export const resolveGa4Id = (theme: SiteTheme | null) => theme?.analytics?.ga4Id || process.env.NEXT_PUBLIC_GA4_ID;
 
 /**
  * GA4 bootstrap (inline script) or "" when no valid id. Anonymised IP, consent-denied by default
@@ -137,7 +139,7 @@ export const isValidGa4Id = (id?: string) => !!id && GA4_RE.test(id);
  * Usage events: window.gtag?.('event','layout_view',{archetype}) — anonymous only, no personal data.
  */
 export function buildGa4Snippet(theme: SiteTheme | null): string {
-  const id = theme?.analytics?.ga4Id;
+  const id = resolveGa4Id(theme);
   if (!isValidGa4Id(id)) return "";
   return `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}window.gtag=gtag;gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied'});gtag('js',new Date());gtag('config','${id}',{anonymize_ip:true});`;
 }
