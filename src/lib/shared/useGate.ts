@@ -27,6 +27,7 @@ async function serverTrack(product: string, action: string): Promise<number> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fingerprint: fp, product, action }),
+      signal: AbortSignal.timeout(4000), // auth-api 502s hang ~30s; fall back to local count
     })
     const data = await res.json()
     return data.count ?? 1
@@ -41,7 +42,7 @@ async function serverTrack(product: string, action: string): Promise<number> {
 async function serverGetCount(product: string, action: string): Promise<number> {
   try {
     const fp = getFingerprint(product)
-    const res = await fetch(`${getApiUrl()}/guest/usage?fingerprint=${fp}&product=${product}&action=${encodeURIComponent(action)}`)
+    const res = await fetch(`${getApiUrl()}/guest/usage?fingerprint=${fp}&product=${product}&action=${encodeURIComponent(action)}`, { signal: AbortSignal.timeout(4000) })
     const data = await res.json()
     return data.count ?? 0
   } catch {
